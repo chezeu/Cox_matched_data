@@ -6,74 +6,79 @@ pdf_document: default
 title: 'Survie grande dimension'
 html_notebook: default
 ---
-
-## data generation
-
-```{r}
-Generate_data <- function(m,n,beta){
-  # set.seed(42)
-  ##covarites data
-  X1 <- rnorm(m,0,1)
-  X2 <- rbinom(m,size = 1, prob = 0.8)
-  X <- as.matrix(cbind(X1, X2))
-  
-  U <- runif(m,0,1) # Time to event variable
-  Tt = -log(U)/exp((X%*%beta))#lambda=1
-  # Constant right censored
-  #c = quantile(Tt[,1], probs = 0.75)
-  c=1.777907
-  
-  Time <- pmin(Tt,c) # le vrai temps
-  delta <- as.numeric(Tt<=c)
-  surv_data <- data.frame(Time,delta,X)
-  colnames(surv_data)=c('Time','delta',paste("X", 1:p, sep = ""))
-  
-  # true_data <- surv_data[1:n,]
-  
-  # database_A <- true_data[,1:2]  #base de donnee de A
-  # XB <- surv_data[,3:dim(surv_data)[2]] #base de donnee de covariables
-  return(surv_data=surv_data )
-}
-```
-
-Method1 presentation: naive method.
- 
-- Here, we first generate a large database $B$ of size $m$ containing the true event times, the censoring indicators, and the  Cox model covariates.
- 
-- We then isolate a database called "data_true" of size $n$, which contains the true information on event times and censors. Then we consider a database named "XB" of size $m$ which contains all the information on the covariates.
-
-- Finally, since we have assumed that the records linkage probabilities $Q$ are known,  we construct a database "naive_data" of size $n< m$, which contains the information on time, censures and covariates selected with a probability $Q$ according to a multinomial distribution in order to insert matching errors.
-
-- We estimate the beta parameter by solving the estimating equation "equa_naive" using Nweton's numerical method in "coxph_equa_naive ".
-
 ```{r}
 
 library(survival)
-library(plyr)
-library(dplyr)
 library(rootSolve) 
 library(nleqslv)
 
-library(mvtnorm)
-library(glmnet)
-library(matrixStats)
-library(clue)
+```
+
+## data generation
+
+ Here, we first generate a large database "surv_data" of size $m$ containing the true event times, the censoring indicators, and the  Cox model covariates.
+ 
+```{r}
+
+Generate_data <- function(m,n,beta){
+  ##covarites data
+  X1 = rnorm(m,0,1)
+  X2 = rbinom(m,size = 1, prob = 0.8)
+  X  = as.matrix(cbind(X1, X2))
+  
+  U  = runif(m,0,1) # Time to event variable
+  Tt = -log(U)/exp((X%*%beta))#lambda=1
+  # Constant right censored
+  #c = quantile(Tt[,1], probs = 0.75)
+  c  = 1.777907
+  
+  Time      = pmin(Tt,c) # le vrai temps
+  delta     = as.numeric(Tt<=c)
+  surv_data = data.frame(Time,delta,X)
+  colnames(surv_data) = c('Time','delta',paste("X", 1:2, sep = ""))
+ 
+    return(surv_data=surv_data )
+}
+
+```
+
+
+ 
+```{r}
+m    = 500
+n    = round((m*80)/100)
+beta = c(0.5,-0.5)
+data = Generate_data(m,n,beta)
+head(data)
+```
+
+
+Method1 presentation: naive method.
+ 
+
+- We isolate a database called "data_true" of size $n$, which contains the true information on event times and censors. Then we consider a database named "XB" of size $m$ which contains all the information on the covariates.
+
+- Finally, since we have assumed that the records linkage probabilities $Q$ are known,  we construct a database "naive_data" of size $n< m$, which contains the information on time, censures and covariates selected with a probability $Q$ according to a multinomial distribution in order to insert matching errors.
+
+- We estimate the beta parameter by solving the estimating equation "equa_naive" using Newton's numerical method in "coxph_equa_naive ".
+
+```{r}
 
 #########  multinomiale Q
 
 Matrix_function<-function(n,m,C,beta, surv_data){
-  
+
   #surv_data <- Generate_data(m,n,beta)
-  X <- surv_data[,3:ncol(surv_data)]
-  XB <- as.matrix(X, ncol = p) #Only covariates
+  X  =  surv_data[,3:(p+2)]
+  XB = as.matrix(X, ncol = p) #Only covariates
   
   ###### True-link data: The first n individual from B
-  data_true <- surv_data[1:n,]
-  data_A <- surv_data[1:n,1:2] #Survival time and censored indicator
+  data_true = surv_data[1:n,]
+  data_A = surv_data[1:n,1:2] #Survival time and censored indicator
   
   
-  Q<-matrix(0,n,m)
-  Lvec<-matrix(0,n,m)
+  Q = matrix(0,n,m)
+  Lvec = matrix(0,n,m)
   for (i in 1:n) {
     if(i!=1 & i!=n){ 
       pro = rep(0,m)
@@ -97,96 +102,472 @@ Matrix_function<-function(n,m,C,beta, surv_data){
       Q[i,]<-pro
       Lvec[i,] <- rmultinom(1, size = 1, pro= pro) }  
   }
+  
   Lvec
   X_naive <-Lvec %*% XB
   colnames(X_naive)<- c("Z1","Z2")
+  
   # Naive data
   data_naive <- cbind( data_A, X_naive)
-  #trueLink_id <- diag(Lvec)
+
   return(list( data_true=data_true, data_A= data_A,XB=XB, data_naive=data_naive,Q=Q, Lvec= Lvec))
 }
 
+```
+
+
+```{r}
+p = 2
+C = c(0.8,0.1,0.1)
+surv_data = data
+
+mf = Matrix_function(n,m,C,beta,surv_data)
+data_true = mf$data_true
+data_naive = mf$data_naive
+
+Ts = mf$data_true$Time
+event = mf$data_true$delta
+Q = mf$Q
+XB = mf$XB
+Z = as.matrix(data_naive[,3:(p+2)])
+
+head(data_true)
+head(data_naive)
+
+```
 ################## ##################################################
 
-# equation naive
 
-equa_naive <- function(beta, data_naive, XB, p) {
+
+
+Methode 4 presentation: Estimate method
+
+ $\textbf{ simulation steps for parameter estimation} $
+
+```{r}
+
+#1. Finding the risk set R(t) given some time t
+
+GetRiskSet <- function(time_of_interest, time_vector, event_vector) {
+  
+  return(which(((time_vector == time_of_interest & event_vector == 1) | (time_vector > time_of_interest))))
+  
+}
+```
+
+
+```{r}
+
+#####
+#number of observations before time t
+
+  observe<- function(time_of_interest, time_vector) {
+    return(which( (time_vector <= time_of_interest) ))
+  }
+
+```
+
+
+1) Parameters initialization.
+
+$\lambda_0^{0}=0.5 \quad \text{if} \quad \delta_i=1, \quad \text{and} \quad 0 \quad \text{otherwise}; \quad \beta^{0}=(0.1,0.1)$
+
+
+
+2) Basic cumulative function is represented by the function "Funct_lambda2"
+
+
+   $ \Lambda_0^{0}(t_i) =  \sum_{d=1 }^{D}\lambda_{0}\{\tilde{t_d}\} Y_i(\tilde{t_d})$
+
+```{r}
+#cumulative function
+
+Funct_lambda2<-function(lambda0,Ts,event){
+  #lambda0<- rep(0.1,length(event))
  
+  n = length(Ts)
+  l =  which(event==0)
+  lambda0[l] = 0
+
+  lambda2 = vector()
+  for (i in 1:n) {
+    vi = observe(Ts[i], Ts)
+    lambda2[i] =  sum(lambda0[vi])   
+  }
+  return(lambda2=lambda2)
+}
+```
+
+```{r}
+lambda0 =  rep(0.1,length(event))
+lambda2=  Funct_lambda2(lambda0,Ts,event)
+head(lambda2)
+
+```
+
+3) Calculates the conditional probabilities of having $Z=x_j$ ( with the function "Functio_prob")
+
+$\pi_{ij}( \boldsymbol{\theta}^{r})= \frac{   p_{ij} \left[ \lambda_{0}(t_{i}) \exp \left({\boldsymbol{\beta^\top} \boldsymbol{x}_{j}} \right) \right]^{\delta_i} \exp\left(- \Lambda_0(t_{i}) \exp ({\boldsymbol{\beta^\top} \boldsymbol{x}_{j}} )\right)  }{ \sum_{j=1}^{n_{B}}     p_{ij} \left[ \lambda_{0}(t_{i}) \exp \left({\boldsymbol{\beta^\top} \boldsymbol{x}_{j}} \right) \right]^{\delta_i} \exp\left(- \Lambda_0(t_{i}) \exp ({\boldsymbol{\beta^\top} \boldsymbol{x}_{j}} )\right)}$
+
+```{r}
+### proba aposteriorie
+
+Functio_prob<-function(beta0,lambda0,lambda2,Ts,event,XB, Q){
+  #beta0<- c(0.1,0.1) 
+  #lambda0<- rep(0.1,length(event))
+  
+  X = as.matrix(XB, ncol = p) # covariates
+
+  eXbeta0 = exp(X%*% beta0)
+  XeXbeta0 = X*matrix(rep(exp(X%*% beta0),p), ncol = p)
+
+  n = length(Ts)
+  m = nrow(XB)
+  
+#pi(ij)
+
+prob = matrix(0,n,m)
+for (i in 1:n) {
+  
+  numerateur = vector()
+  for (j in 1:m) {
+    numerateur[j] = Q[i,j] * ( lambda0[i]*eXbeta0[j])^event[i] * exp(-lambda2[i]* eXbeta0[j] )
+  }
+  
+  denominateur = sum(numerateur)
+  
+  prob[i,] = numerateur/denominateur
+}
+prob
+return( prob = prob)
+}
+```
+
+
+```{r}
+lambda0 =  rep(0.1,length(event))
+beta0 = c(0.1,0.1)
+p_f =  Functio_prob(beta0,lambda0,lambda2,Ts,event,XB, Q)
+S=apply(p_f,1, sum)
+S
+prob = p_f  
+```
+
+
+4)Calculation of the baseline risk $(k \geq 1)$ ("Function_lambda0")
+
+   $\lambda_{0}^{(k)}\{\tilde{t_{d}}\} = \frac{1 }{ \sum_{i=1}^{n_A}\sum_{j=1}^{n_B}\pi_{ij}(\boldsymbol{\theta}^{r}) \exp (\boldsymbol{\beta^\top} \boldsymbol{x}_{j}) Y_i(\tilde{t_{d}} )} $
+
+
+```{r}
+################ estimations ###################################
+
+#lambda0
+Function_lambda0<-function(prob,beta0,Ts,event,XB){
+  
+  p = ncol(XB)
+  n = length(Ts)
+  
+  X = as.matrix(XB, ncol = p) # covariates
+  eXbeta0 = exp(X%*% beta0)
  
-  Ts <-as.matrix( data_naive[,1]) 
-  event <- data_naive[,2] 
-  Z <- as.matrix(data_naive[,3:(p+2)])
-#  X <- as.matrix(XB[,1:p])
+  som1 = prob%*%eXbeta0 # somme sur les j
+
+  lambda0_1 = vector()
   
-  ezbeta <- exp(Z%*% beta)
-  zezbeta <- Z*matrix(rep(exp(Z%*% beta),p), ncol = p) 
-  
-  n = nrow(data_naive)
-  
-  s<-0
-  for(i in 1:n){ 
-   
-    # Yi<- as.numeric( Ts >= Ts[i])# at risk 
-    Yi<- as.numeric( (Ts == Ts[i] ) | (Ts > Ts[i]))# at risk
-    risq <- which(Yi==1)
+  for (i in 1:n) {
     
-    if(length(risq)==1){  
-      num_naive<- zezbeta[risq,]
-      denum_naive<- ezbeta[risq]   
+    if(event[i] == 0){lambda0_1[i] = 0
+    }else if(event[i] != 0 ){
+      
+    risq = GetRiskSet (Ts[i], Ts, event)
+    nrisk = length(risq)
+    
+    if(nrisk==1){
+      t2R = som1[risq] 
+    }else if(nrisk!=1){
+      
+      t2R = sum( som1[risq] )
+    }
+    
+    lambda0_1[i] = (1/t2R)
+  }
+  }
+  return( lambda0_1 = lambda0_1)
+}
+```
+
+```{r}
+lambda0_1 = Function_lambda0 (prob,beta0,Ts,event,XB)
+head(lambda0_1)
+
+```
+
+
+5) Solving the estimating equation: estimation of beta at iteration $(k \geq 1)$ ("equa_estimate" and "coxph_estimate")
+
+
+$H_w^{3} (\boldsymbol{\beta}^{(k)})=\sum_{i=1}^{n_A}\delta_{i}\left(\sum_{j=1}^{n_{B}}\pi_{ij}(\boldsymbol{\theta}^{r})\boldsymbol{x}_{j} - \frac{ \sum_{k=1}^{n_{A}} \sum_{j=1}^{n_{B}}   Y_k(\tilde{t_{i}} ) \pi_{kj}(\boldsymbol{\theta}^{r})  \exp\left( \boldsymbol{\beta}^{(r+1)^\top} \boldsymbol{x}_j \right)\boldsymbol{x}_{j} } {  \sum_{k=1}^{n_A}\sum_{j=1}^{n_B}  Y_k(\tilde{t_{i}} )\pi_{kj}(\boldsymbol{\theta}^{r}) \exp(\boldsymbol{\beta}^{(r+1)^\top} \boldsymbol{x}_{j}) }\right)=0$
+
+
+
+```{r}
+#  estimating equation ########################
+
+equa_estimate <- function(beta,prob,Ts,event,XB) {
+  
+  p = ncol(XB)
+  n = length(Ts)
+
+  X = as.matrix(XB, ncol = p) # covariates
+  eXbeta = exp(X%*% beta)
+  XeXbeta = X*matrix(rep(exp(X%*% beta),p), ncol = p)
+  
+  #######les sommes pour Z
+
+  Z = prob%*%X 
+
+  #### les sommes q*exp(beta x) pour tilfe_f
+  
+  som1 = prob%*%eXbeta
+
+  ###  les sommes pour tilde_g
+  
+  som2 = prob%*%XeXbeta
+
+  dat1 = cbind(Ts, Z)[which(event==1),]
+  
+  ## Estimating equation
+  s = matrix(0,nrow=nrow(dat1), ncol = p)
+  
+  for (i in 1:nrow(dat1)) {
+    ts = dat1[i, 1]
+    Z1R = dat1[i,2:ncol(dat1)]
+    
+    risk = GetRiskSet(ts, Ts, event)
+    nrisk = length(risk)
+    
+    if(nrisk==1){
+      t2R = som1[risk] 
+      t3R = matrix(som2, ncol = p)[risk,] 
+    }else if(nrisk!=1){
+      
+      t2R = sum( som1[risk] )
+      t3R = colSums(matrix(som2, ncol = p)[risk,] ) }
+    
+    s[i,] = (Z1R - t3R/t2R)
+    
+  }
+  
+  s <- colSums(s)
+  
+  return(s=s)
+  
+}
+```
+
+```{r}
+# ###########solve the equation 
+
+coxph_estimate<- function(beta,prob,Ts,event,XB,beta_ini,maxiter = 50){
+  
+  f <- function(x){
+    equa_estimate  (beta= x,prob,Ts,event,XB)
+  }
+  fit_manual <- nleqslv( c(0,0),f, method = c("Broyden", "Newton"))
+  beta0 <- fit_manual$x
+  iterations <- fit_manual$iter
+  converge <- as.numeric(( iterations< maxiter)& (fit_manual$scalex==1) )
+  
+  #xstart <- matrix(rnorm(20,0,1), ncol = 2)
+  #Zero <-  searchZeros(xstart,f)
+  #fit_manual <- multiroot(f,start = rep(0,p), maxiter = maxiter)
+ # beta0 <- fit_manual$root
+  #iterations <- fit_manual$iter
+#converge <- as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
+  
+  return(list( beta0 = beta0, converge = converge, iterations = iterations) )
+}
+```
+
+
+```{r}
+beta_ini=c(0,0)
+H_f = coxph_estimate (beta,prob,Ts,event,XB,beta_ini, maxiter = 50)
+H_f$beta0
+H_f$converge
+H_f$iterations
+
+```
+Conditions:( relative errors) ("Func_itteration")
+
+
+ $\mid \mid \theta_0^{(k+1)} - \theta_0^{(k)} \mid\mid< 10^{-6}$ 
+    
+
+```{r}
+### iterrations ###########################################
+
+#valeurs initials
+
+Func_itteration<-function(beta,beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500){
+  
+  p = ncol(XB)
+  n = length(Ts)
+  
+  it = 0
+  converge = FALSE
+  
+while ((!converge) & (it < maxits)){ 
+
+  lambda0.old = lambda0
+  beta0.old = beta0
+  beta_ini = beta0.old
+  
+  #expectation  
+  
+  lambda2 = Funct_lambda2(lambda0.old,Ts,event)
+
+  prob = Functio_prob(beta0.old,lambda0.old,lambda2,Ts,event,XB, Q)
+
+  
+  #maximization
+  lambda0 = Function_lambda0 (prob,beta0, Ts,event,XB)
+  estime = coxph_estimate (beta,prob,Ts,event,XB,beta_ini, maxiter = 50)
+  beta0 = estime$beta0
+
+  converge = (sum ((beta0.old -beta0))^2 + sum ( (lambda0.old - lambda0)^2 ) ) < tol  
+           
+
+  if (it == maxits) {
+    cat("WARNING! NOT CONVERGENT!", "\n")
+    converge = FALSE
+  }else if(is.na(beta0[1]) & is.na(beta0[2])){
+    cat("WARNING! beta0 NOT AVAILABLE!", "\n")
+    converge = FALSE
+  }
+  
+   it = it + 1
+
+}
+  
+return(list(beta0=beta0, lambda0=lambda0, prob=prob, converge= converge))
+}
+
+```
+
+
+```{r}
+#############################################################
+#method 4
+p = 2
+m    = 500
+n    = round ( (80*m)/100)
+beta = c(0.5,-0.5)
+C = c(0.8,0.1,0.1)
+beta_ini=c(0,0)
+      surv_data = Generate_data(m,n,beta)
+      mf = Matrix_function(n,m,C,beta,surv_data)
+      data_true = mf$data_true
+      data_naive = mf$data_naive
+
+      Ts = mf$data_true$Time
+      event = mf$data_true$delta
+      Q = mf$Q
+      XB = mf$XB
+      Z = as.matrix(data_naive[,3:(p+2)]) 
+      
+      lambda0 =  rep(0.1,length(event))
+      beta0 = c(0.1,0.1)
+
+  fit_estimate = Func_itteration(beta,beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500)
+  coef_estimate = fit_estimate$beta0
+  lambda0_estimate = fit_estimate$lambda0
+  converge_estimate = fit_estimate$converge
+
+  # Theoretical estimating equation for true and naive data
+  fit_true = coxph(Surv(Time,delta)~.,data = data_true)
+  coef_true = as.vector(fit_true$coefficients)
+  var_true = diag(fit_true$var)
+
+  coef_true
+  coef_estimate
+```
+
+# equation naive
+```{r}
+equa_naive <- function(beta,Ts,event, Z) {
+  
+  p=ncol(Z)
+  ezbeta = exp(Z%*% beta)
+  zezbeta = Z*matrix(rep(exp(Z%*% beta),p), ncol = p) 
+  
+  n = length(Ts)
+  
+  s = 0
+  for(i in 1:n){ 
+    
+#Yi<- as.numeric( Ts >= Ts[i])# at risk
+    Yi = as.numeric( (Ts == Ts[i] ) | (Ts > Ts[i]))# at risk
+    risq = which(Yi==1)
+    
+    if(length(risq)==1){
+      
+      num_naive = zezbeta[risq,]
+      denum_naive = ezbeta[risq] 
+      
     }else if (length(risq)!=1){
-      num_naive<-colSums( zezbeta[risq,])
-      denum_naive<- sum(ezbeta[risq])  }  
-    s<- s+ event[i]* ( Z[i,]- num_naive/denum_naive)
+      
+      num_naive = colSums( zezbeta[risq,])
+      denum_naive = sum(ezbeta[risq])  }  
+    
+    s = s+ event[i]* ( Z[i,]- num_naive/denum_naive)
   }
   s
-  return(H_naive=s) ##naive estimator 
+  return(H_naive = s) ##naive estimator 
 }
+```
 
-# solve the equation 
-coxph_equa_naive <- function(data_naive, XB, p,maxiter = 20){
+
+```{r}
+# solve the naive equation 
+
+coxph_equa_naive <- function(Ts,event, Z, maxiter = 20){
+  p=ncol(Z)
+  
   f <- function(x){
-    equa_naive (beta=x, data_naive=data_naive, XB = XB, p = p )
+    equa_naive (beta=x,Ts,event, Z)
   }
   
-  fit_manual <- multiroot(f,start = rep(0,p), maxiter = maxiter)
-  beta <- fit_manual$root
-  iterations <- fit_manual$iter
-  converge <- as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
+  fit_manual = multiroot(f,start = rep(0,p), maxiter = maxiter)
+  beta = fit_manual$root
+  iterations = fit_manual$iter
+  converge = as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
   
-  return(list(coef = beta, converge = converge,iterations=iterations))
+  return(list(coef = beta, converge = converge, iterations = iterations))
 }
 
-#library(simsalapar)
-#library(doParallel)
+```
 
+```{r}
 
-doOne2d_equat_estimat<- function(n,m,C,beta,surv_data){
-  # Fixed parameters
-  p = 2
-  beta = matrix(c(0.5,-0.5), nrow = 2)
-  
-  # Generate data
-  data <-Matrix_function(n,m,C,beta,surv_data)
-  data_true <- data$data_true
-  data_naive <- data$data_naive
-  
-  XB = data$XB
-  
-  # Theoretical estimating equation for true and naive data
-  fit_true <- coxph(Surv(Time,delta)~.,data = data_true)
-  coef_true <- as.vector(fit_true$coefficients)
-  var_true <- diag(fit_true$var)
-  
-  fit_naive <- coxph(Surv(Time,delta)~.,data = data_naive)
-  coef_naive <- as.vector(fit_naive$coefficients)
-  var_naive <- diag(fit_naive$var)
+```
 
-  fit_naive2 <- coxph_equa_naive(data_naive, XB, p,maxiter = 20)
-  coef_naive2 <- fit_naive2$coef
-  converge_naive2 <- fit_naive2$converge
+```{r}
   
-  return(list( coef_true=coef_true, coef_naive2=coef_naive2, converge_naive2=converge_naive2))
-}
+  fit_naive2 = coxph(Surv(Time,delta)~.,data = data_naive)
+  coef_naive2 = as.vector(fit_naive2$coefficients)
+  var_naive2 = diag(fit_naive2$var)
+
+  fit_naive = coxph_equa_naive(Ts,event, Z, maxiter = 20)
+  coef_naive = fit_naive$coef
+  converge_naive = fit_naive$converge
+  
+  coef_true
+  coef_naive 
+  coef_naive2
+ 
+  
 ```
 
 Method 2 presentation: Weighted-sum-method 1
@@ -198,163 +579,88 @@ Method 2 presentation: Weighted-sum-method 1
 $\tilde{Z_i}=\sum_{j=1}^{n_B} p_{ij}X_j$, $ \forall j \in XB$,
 
 - we estimate the beta parameter by solving the first estimating equation "equa_W_sum1" using Nweton's numerical method in the function "coxph_equa_W_sum1".
+
+
 ```{r}
-
-library(survival)
-library(plyr)
-library(dplyr)
-library(rootSolve) 
-library(nleqslv)
-
-library(mvtnorm)
-library(glmnet)
-library(matrixStats)
-library(clue)
-
-#########  multinomiale Q
-
-Matrix_function_sum<-function(n,m,C,beta){
-  
-  Q<-matrix(0,n,m)
-  #Lvec<-matrix(0,n,m)
-  for (i in 1:n) {
-    if(i!=1 & i!=n){ 
-      pro = rep(0,m)
-      pro[i] = C[1] #Probability of True links
-      pro[i+1]= C[3]
-      pro[i-1]=C[3]
-      Q[i,]<-pro
-      } 
-    if(i==1)  {
-      pro = rep(0,m)
-      pro[i] =  C[1] #Probability of True links
-      pro[i+1]= C[2]
-      pro[i+2]= C[3]
-      Q[i,]<-pro
-      } 
-    if(i==n){ 
-      pro = rep(0,m)
-      pro[i] = C[1] #Probability of True links
-      pro[i-1]=C[2]
-      pro[i-2]=C[3]
-      Q[i,]<-pro
-      }  
-    }
-  
-  return( Q=Q)
-}
-
-##################
-
-#1. Finding the risk set R(t) given some time t
-GetRiskSet <- function(time_of_interest, time_vector, event_vector) {
-  
-  return(which(((time_vector == time_of_interest & event_vector == 1) | (time_vector > time_of_interest))))
-  
-}
-######################
-
 #################
 
-equa_W_sum1 <- function(beta,n,m,C,surv_data) {
-  # Generate data
+equa_W_sum1 <- function(beta,Ts,event,XB, Q) {
   
-  XB <- surv_data[,3:ncol(surv_data)]
-  X <- as.matrix(XB, ncol = p) #Only covariates
-  
-  data_true <- surv_data[1:n,]
-  data_A <- surv_data[1:n,1:2] #Survival time and censored indicator
-  Ts <-as.matrix( data_A[,1]) 
-  event <- data_A[,2]
+  p = ncol(XB)
+  X = as.matrix(XB, ncol = p) # covariates
    
-  Q <-Matrix_function_sum(n,m,C,beta)
+  eXbeta = exp(X%*% beta)
+  XeXbeta = X*matrix(rep(exp(X%*% beta),p), ncol = p)
   
-  eXbeta <- exp(X%*% beta)
-  XeXbeta <- X*matrix(rep(exp(X%*% beta),p), ncol = p)
+  ##les sommes pour Z
+  Z = Q%*%X
   
-  #######les sommes pour Z
+  ## les sommes q*exp(beta x) pour tilfe_f
+  som1 =  Q%*%eXbeta
   
-  Z <- Q%*%X
+  ##  les sommes pour tilde_g
+  som2 = Q%*%XeXbeta
   
-  #### les sommes q*exp(beta x) pour tilfe_f
+  dat1 = cbind(Ts,Z)[which(event==1),] #new  data
   
-  som1<-  Q%*%eXbeta
-  
-  ###  les sommes pour tilde_g
-  
-  som2<- Q%*%XeXbeta
-  
-  
-  dat1 <- cbind(Ts,Z)[which(event==1),]
   ## Estimating equation
-  s <- matrix(0,nrow=nrow(dat1), ncol = p)
+  s = matrix(0,nrow=nrow(dat1), ncol = p)
+  
   for (i in 1:nrow(dat1)) {
-    ts <- dat1[i, 1]
-    Z1R <- dat1[i,2:ncol(dat1)]
+    ts = dat1[i, 1]
+    Z1R = dat1[i,2:ncol(dat1)]
     
-    risk <- GetRiskSet(ts, Ts, event)
-    nrisk <- length(risk)
+    risk = GetRiskSet(ts, Ts, event)
+    nrisk = length(risk)
     if(nrisk==1){
-      t2R <- som1[risk] 
-      t3R <- matrix(som2, ncol = p)[risk,] 
+      t2R = som1[risk] 
+      t3R = matrix(som2, ncol = p)[risk,] 
       
     }else if(nrisk!=1){
       
-      t2R <- sum(som1[risk] )
-      t3R <- colSums(matrix(som2, ncol = p)[risk,] ) }
+      t2R = sum(som1[risk] )
+      t3R = colSums(matrix(som2, ncol = p)[risk,] ) }
     
-    s[i,] <- (Z1R - (t3R/t2R))
+    s[i,] = (Z1R - (t3R/t2R))
     
   }
   
-  s <- colSums(s)
+  s = colSums(s)
   
   return(s=s)
   
 }
+```
 
+```{r}
 # ###########solve the equations 
-coxph_w_sum1 <- function(surv_data, p, maxiter = 20){
+coxph_w_sum1 <- function(Ts,event,XB, Q, maxiter = 20){
+  
   f <- function(x){
-    equa_W_sum1  (beta=x,n,m,C,surv_data)
+    equa_W_sum1  (beta=x,Ts,event,XB, Q)
   }
   
-  fit_manual <- multiroot(f,start = rep(0,p), maxiter = maxiter)
-  beta <- fit_manual$root
-  iterations <- fit_manual$iter
-  converge <- as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
+  fit_manual = multiroot(f,start = rep(0,p), maxiter = maxiter)
+  beta = fit_manual$root
+  iterations = fit_manual$iter
+  converge = as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
   
-  return(list(coef = beta, converge = converge,iterations=iterations))
+  return(list(coef = beta, converge = converge,iterations = iterations))
 }
+```
 
+
+
+```{r}
 #############################
-#library(simsalapar)
-#library(doParallel)
 
-
-doOne2d_w_sum1<- function(n,m,surv_data,C){
-    # surv_data<-Generate_data(m,n,beta)
-  # Fixed parameters
-  p = 2
-  beta = matrix(c(0.5,-0.5), nrow = 2)
+  #second method
+  fit_w_sum1 = coxph_w_sum1(Ts,event,XB, Q,maxiter = 20)
+  coef_w_sum1 = fit_w_sum1$coef
+  converge_w_sum1 = fit_w_sum1$converge
   
-  XB <- surv_data[,3:ncol(surv_data)]
-  
-  data_true <- surv_data[1:n,]
-
-
-  # Theoretical estimating equation for true and naive data
-  fit_true <- coxph(Surv(Time,delta)~.,data = data_true)
-  coef_true <- as.vector(fit_true$coefficients)
-  var_true <- diag(fit_true$var)
-
-  fit_w_sum1 <- coxph_w_sum1(surv_data, p,maxiter = 20)
-  coef_w_sum1 <- fit_w_sum1$coef
-  converge_w_sum1 <- fit_w_sum1$converge
-  
-  return(list( coef_true=coef_true, coef_w_sum1=coef_w_sum1, converge_w_sum1=converge_w_sum1))
-}
-
+  coef_true
+  coef_w_sum1
 ```
 
 Method 3 presentation: Weighted-sum-method 2
@@ -371,103 +677,80 @@ Method 3 presentation: Weighted-sum-method 2
 ```{r}
 #################
 
-equa_W_sum2 <- function(beta,n,m,C,surv_data) {
+equa_W_sum2 <- function(beta,Ts,event,XB, Q) {
   
-  # Generate data
+  p = ncol(XB)
+  n = length(Ts)
+  X = as.matrix(XB, ncol = p) #Only covariates
   
-  XB <- surv_data[,3:ncol(surv_data)]
-  X <- as.matrix(XB, ncol = p) #Only covariates
-  
-  data_true <- surv_data[1:n,]
-  data_A <- surv_data[1:n,1:2] #Survival time and censored indicator
-  Ts <-as.matrix( data_A[,1]) 
-  event <- data_A[,2]
-  
-  Q <-Matrix_function_sum(n,m,C,beta)
-  
-  eXbeta <- exp(X%*% beta)
-  XeXbeta <- X*matrix(rep(exp(X%*% beta),p), ncol = p)
+  eXbeta = exp(X%*% beta)
+  XeXbeta = X*matrix(rep(exp(X%*% beta),p), ncol = p)
   
   
   
   # somme des deux valeurs max
-  Z<-matrix(0, nrow = n, ncol = p)
-  for (k in 1:n) {
-    qk <- Q[k,]
-    l1<-max(qk)
-    k1<- which(qk==max(qk))
-    qk[k1]<-0
-    k2<-which(qk==max(qk))
-    if(length(k2)!=1){k2<-k2[1]}
-    qk[k1]<-l1
-    qkx <- (qk*X)[c(k1,k2),]
-    Z[k,]<- colSums(qkx)
-  }  
-  Z
+  Z = matrix(0, nrow = n, ncol = p)
+  som1 = vector()                  # denominator
+  som2 = matrix(0, nrow = n, ncol = p) #numerator
   
-  #### les sommes q*exp(beta x) pour tilfe_f
-  som1<- vector()
-  for (j in 1:n) {
-    qj <- Q[j,]
-    j1<- which(qj==max(qj))
-    l1<-max(qj)
-    qj[j1]<-0
-    j2<-which(qj==max(qj))
-    if(length(j2)!=1){j2<-j2[1]}
-    qj[j1]<-l1
-    qjx <- (qj*eXbeta)[c(j1,j2),]
-    som1[j] <- sum( qjx)
-  }  
-  som1 
-  
-  ###  les sommes pour tilde_g
-  som2<-matrix(0, nrow = n, ncol = p)
-  
-  for (i in 1:n) {
-    qi <- Q[i,]
-  i1<- which(qi==max(qi))
-    l1<-max(qi)
-    qi[i1]<-0
-    i2<-which(qi==max(qi))
-    if(length(i2)!=1){i2<-i2[1]}
-    qi[i1]<-l1
-    qix <- (qi*XeXbeta)[c(i1,i2),]
-    som2[i,] <- colSums( qix)
-  }  
-  som2
-  
-  dat1 <- cbind(Ts,Z)[which(event==1),]
-  ## Estimating equation
-  s <- matrix(0,nrow=nrow(dat1), ncol = p)
-  for (i in 1:nrow(dat1)) {
-    ts <- dat1[i, 1]
-    Z1R <- dat1[i,2:ncol(dat1)]
+   for (i in 1:n) {
+    qi = Q[i,]
+    i1 = which(qi == max(qi))
+    l1 = max(qi)
+    qi[i1] = 0
+    i2 = which(qi == max(qi))
+    if(length(i2)!= 1){i2 = i2[1]}
+    qi[i1] = l1
     
-    risk <- GetRiskSet(ts, Ts, event)
-    nrisk <- length(risk)
+    qix = (qi*X)[c(i1,i2),]
+    Z[i,] = colSums(qix)
+    
+  #### les sommes q*exp(beta x) pour tilfe_f   
+    qixbeta = (qi*eXbeta)[c(i1,i2),]
+    som1[i] = sum( qixbeta)
+    
+  ###  les sommes pour tilde_g   
+    qiXeXbeta = (qi*XeXbeta)[c(i1,i2),]
+    som2[i,] = colSums(qiXeXbeta)
+  }  
+ 
+  
+  dat1 = cbind(Ts,Z)[which(event==1),]
+  ## Estimating equation
+  s = matrix(0,nrow=nrow(dat1), ncol = p)
+  for (i in 1:nrow(dat1)) {
+    ts = dat1[i, 1]
+    Z1R = dat1[i,2:ncol(dat1)]
+    
+    risk = GetRiskSet(ts, Ts, event)
+    nrisk = length(risk)
     if(nrisk==1){
-      t2R <- som1[risk] 
-      t3R <- matrix(som2, ncol = p)[risk,] 
+      t2R = som1[risk] 
+      t3R = matrix(som2, ncol = p)[risk,] 
       
     }else if(nrisk!=1){
       
-      t2R <- sum(som1[risk] )
-      t3R <- colSums(matrix(som2, ncol = p)[risk,] ) }
+      t2R = sum(som1[risk] )
+      t3R = colSums(matrix(som2, ncol = p)[risk,] ) }
     
-    s[i,] <- (Z1R - (t3R/t2R))
+    s[i,] = (Z1R - (t3R/t2R))
     
   }
   
-  s <- colSums(s)
-  return(H_w_sum2=s)  
+  s = colSums(s)
+  return(H_w_sum2 = s)  
 }
+```
 
+```{r}
 # ###########solve the equations 
 
 
-coxph_w_sum2 <- function(surv_data, p,maxiter = 20){
+coxph_w_sum2 <- function(Ts,event,XB, Q, maxiter = 20){
+  p= ncol(XB)
+  
   f <- function(x){
-    equa_W_sum2  (beta=x,n,m,C,surv_data)
+    equa_W_sum2  (beta=x,Ts,event,XB, Q)
   }
   
   fit_manual <- multiroot(f,start = rep(0,p), maxiter = maxiter)
@@ -475,639 +758,478 @@ coxph_w_sum2 <- function(surv_data, p,maxiter = 20){
   iterations <- fit_manual$iter
   converge <- as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
   
-  return(list(coef = beta, converge = converge,iterations=iterations))
+  return(list(coef = beta, converge = converge, iterations=iterations))
 }
+```
 
+
+```{r}
 #############################
-#library(simsalapar)
-#library(doParallel)
-
-
-doOne2d_w_sum2<- function(n,m,surv_data,C){
-  p = 2
-  beta = matrix(c(0.5,-0.5), nrow = 2)
-  
-  # surv_data<-Generate_data(m,n,beta)
-  
-  XB <- surv_data[,3:ncol(surv_data)]
-  data_true <- surv_data[1:n,]
-
-  # Theoretical estimating equation for true and naive data
-  fit_true <- coxph(Surv(Time,delta)~.,data = data_true)
-  coef_true <- as.vector(fit_true$coefficients)
-  var_true <- diag(fit_true$var)
-  
-  fit_w_sum2 <- coxph_w_sum2(surv_data, p,maxiter = 20)
-  coef_w_sum2 <- fit_w_sum2$coef
-  converge_w_sum2 <- fit_w_sum2$converge
-  
-  return(list( coef_true=coef_true, coef_w_sum2=coef_w_sum2, converge_w_sum2=converge_w_sum2))
-}
-
-```
-
-Methode 4 presentation: Estimate method
-
- $\textbf{ simulation steps for parameter estimation} $
-
-1) Parameters initialization.
-
-$\lambda_0^{0}=0.5 \quad \text{if} \quad \delta_i=1, \quad \text{and} \quad 0 \quad \text{otherwise}; \quad \beta^{0}=(0.1,0.1)$
-
-
-
-2) Basic cumulative function is represented by the function "Funct_lambda2"
-
-
-   $ \Lambda_0^{0}(t_i) =  \sum_{d=1 }^{D}\lambda_{0}\{\tilde{t_d}\} Y_i(\tilde{t_d})$
-
-3) Calculates the conditional probabilities of having $Z=x_j$ ( with the function "Functio_prob")
-
-$\pi_{ij}( \boldsymbol{\theta}^{r})= \frac{   p_{ij} \left[ \lambda_{0}(t_{i}) \exp \left({\boldsymbol{\beta^\top} \boldsymbol{x}_{j}} \right) \right]^{\delta_i} \exp\left(- \Lambda_0(t_{i}) \exp ({\boldsymbol{\beta^\top} \boldsymbol{x}_{j}} )\right)  }{ \sum_{j=1}^{n_{B}}     p_{ij} \left[ \lambda_{0}(t_{i}) \exp \left({\boldsymbol{\beta^\top} \boldsymbol{x}_{j}} \right) \right]^{\delta_i} \exp\left(- \Lambda_0(t_{i}) \exp ({\boldsymbol{\beta^\top} \boldsymbol{x}_{j}} )\right)}$
-
-4)Calculation of the baseline risk $(k \geq 1)$ ("Function_lambda0")
-
-   $\lambda_{0}^{(k)}\{\tilde{t_{d}}\} = \frac{1 }{ \sum_{i=1}^{n_A}\sum_{j=1}^{n_B}\pi_{ij}(\boldsymbol{\theta}^{r}) \exp (\boldsymbol{\beta^\top} \boldsymbol{x}_{j}) Y_i(\tilde{t_{d}} )} $
-
-
-5) Solving the estimating equation: estimation of beta at iteration $(k \geq 1)$ ("equa_estimate" and "coxph_estimate")
-
-
-$H_w^{3} (\boldsymbol{\beta}^{(k)})=\sum_{i=1}^{n_A}\delta_{i}\left(\sum_{j=1}^{n_{B}}\pi_{ij}(\boldsymbol{\theta}^{r})\boldsymbol{x}_{j} - \frac{ \sum_{k=1}^{n_{A}} \sum_{j=1}^{n_{B}}   Y_k(\tilde{t_{i}} ) \pi_{kj}(\boldsymbol{\theta}^{r})  \exp\left( \boldsymbol{\beta}^\top \boldsymbol{x}_j \right)\boldsymbol{x}_{j} } {  \sum_{k=1}^{n_A}\sum_{j=1}^{n_B}  Y_k(\tilde{t_{i}} )\pi_{kj}(\boldsymbol{\theta}^{r}) \exp(\boldsymbol{\beta}^\top \boldsymbol{x}_{j}) }\right)=0$
-
-
-Conditions:( relative errors) ("Func_itteration")
-
-
- $\frac{\mid \lambda_0^{(k+1)} - \lambda_0^{(k)} \mid}{ \lambda_0^{(k)}} < 10^{-6}$ 
-    and   $\frac{\mid \beta_0^{(k+1)} - \beta_0^{(k)} \mid}{ \beta_0^{(k)}} < 10^{-6}$
-
-
-
-
-```{r}
-library(survival)
-library(plyr)
-library(dplyr)
-library(rootSolve) 
-library(nleqslv)
-
-library(mvtnorm)
-library(glmnet)
-library(matrixStats)
-library(clue)
-
-library(clue)
-library(matrixStats)
-library(klaR)
-#library(ludic)
-
-library(doParallel)
-library(RecordLinkage)
-
-#########  multinomiale Q
-
-Matrix_function_sum<-function(n,m,C,beta){
-
-  Q<-matrix(0,n,m)
-  #Lvec<-matrix(0,n,m)
-  for (i in 1:n) {
-    if(i!=1 & i!=n){ 
-      pro = rep(0,m)
-      pro[i] = C[1] #Probability of True links
-      pro[i+1]= C[3]
-      pro[i-1]=C[3]
-      Q[i,]<-pro
-      #Lvec[i,] <- rmultinom(1, size = 1, pro = pro)
-    } 
-    if(i==1)  {
-      pro = rep(0,m)
-      pro[i] =  C[1] #Probability of True links
-      pro[i+1]= C[2]
-      pro[i+2]= C[3]
-      Q[i,]<-pro
-      #Lvec[i,] <- rmultinom(1, size = 1, pro = pro)
-    } 
-    if(i==n){ 
-      pro = rep(0,m)
-      pro[i] = C[1] #Probability of True links
-      pro[i-1]=C[2]
-      pro[i-2]=C[3]
-      Q[i,]<-pro
-      # Lvec[i,] <- rmultinom(1, size = 1, pro= pro)
-    }  
-  }
-  
-  return(Q=Q)
-}
-
-##################
-
-#1. Finding the risk set R(t) given some time t
-GetRiskSet <- function(time_of_interest, time_vector, event_vector) {
-  
-  return(which(((time_vector == time_of_interest & event_vector == 1) | (time_vector > time_of_interest))))
-  
-}
-######################
-# ####################initialisation########################
-
-#cumulative function
-Funct_lambda2<-function(lambda0,surv_data){
-  #lambda0<- rep(0.5,length(event))
+  ### method 3
+  fit_w_sum2 = coxph_w_sum2(Ts,event,XB, Q, maxiter = 20)
+  coef_w_sum2 = fit_w_sum2$coef
+  converge_w_sum2 = fit_w_sum2$converge
  
-  data_true <- surv_data[1:n,]
-  data_A <- surv_data[1:n,1:2] #Survival time and censored indicator
-  Ts <-as.matrix( data_A[,1]) 
-  event <- data_A[,2]
-  
-  l<- which(event==0)
-  lambda0[l]<-0
-  
-  observe<- function(time_of_interest, time_vector, event_vector) {
-    return(which( (time_vector <= time_of_interest) ))
-  }
-  
-  lambda2<-vector()
-  for (i in 1:n) {
-    vi<- observe(Ts[i], Ts, event)
-    lambda2[i]<- sum(lambda0[vi])   
-  }
-  return(lambda2=lambda2)
-}
-
-### proba aposteriorie
-
-Functio_prob<-function(beta0,lambda0,surv_data){
-  #beta0<- c(0.1,0.1) 
-  #lambda0<- rep(0.5,length(event))
-  
-lambda2<-Funct_lambda2(lambda0,surv_data)
-
-Q <-Matrix_function_sum(n,m,C,beta)
-
-XB <- surv_data[,3:ncol(surv_data)]
-X <- as.matrix(XB, ncol = p) #Only covariates
-
-data_true <- surv_data[1:n,]
-data_A <- surv_data[1:n,1:2] #Survival time and censored indicator
-Ts <-as.matrix( data_A[,1]) 
-event <- data_A[,2]
-
-
-eXbeta0 <- exp(X%*% beta0)
-XeXbeta0 <- X*matrix(rep(exp(X%*% beta0),p), ncol = p)
-
-
-#pi(ij)
-
-prob<-matrix(0,n,m)
-for (i in 1:n) {
-  numerateur<-vector()
-  for (j in 1:m) {
-    numerateur[j]<- Q[i,j] * ( lambda0[i]*eXbeta0[j])^event[i] * exp(-lambda2[i]* eXbeta0[j] )
-  }
-  denominateur<-sum(numerateur)
-  prob[i,]<- numerateur/denominateur
-}
-prob
-return( list(eXbeta0=eXbeta0,XeXbeta0=XeXbeta0,prob=prob))
-}
-
-################ estimations ###################################
-
-#lambda0
-Function_lambda0<-function(beta0,lambda0,surv_data){
-  
-  init<-Functio_prob(beta0,lambda0,surv_data)
-  prob<- init$prob
-  eXbeta0<-init$eXbeta0
-  
-  data_true <- surv_data[1:n,]
-  data_A <- surv_data[1:n,1:2] #Survival time and censored indicator
-  Ts <-as.matrix( data_A[,1]) 
-  event <- data_A[,2]
-  
-  som1<-prob%*%eXbeta0
-  
-  s <- vector()
-  for (i in 1:n) {
-    
-    ts <- Ts[i]
-    risk <- GetRiskSet(ts, Ts, event)
-    nrisk <- length(risk)
-    if(nrisk==0){ 
-      t2R<-1
-    }else if(nrisk==1){
-      t2R <- som1[risk] 
-    }else if(nrisk!=1){
-      
-      t2R <- sum( som1[risk] )
-    }
-    
-    s[i] <- (1/t2R)*event[i]
-  }
-  
-  return(s=s)
-}
-
-# equation estimente ########################
-equa_estimate <- function(beta0,lambda0,surv_data) {
-
-  # Generate data
-  XB <- surv_data[,3:ncol(surv_data)]
-  X <- as.matrix(XB, ncol = p) #Only covariates
-  
-  data_true <- surv_data[1:n,]
-  data_A <- surv_data[1:n,1:2] #Survival time and censored indicator
-  Ts <-as.matrix( data_A[,1]) 
-  event <- data_A[,2]
-  
-  init<-Functio_prob(beta0,lambda0,surv_data)
-  prob<- init$prob
-  eXbeta0<-init$eXbeta0
-  XeXbeta0<-init$XeXbeta0
-  
-  #######les sommes pour Z
-
-  Z <- prob%*%X 
-
-  #### les sommes q*exp(beta x) pour tilfe_f
-  
-  som1<- prob%*%eXbeta0
-
-  ###  les sommes pour tilde_g
-  
-  som2<-prob%*%XeXbeta0
-
-  dat1 <- cbind(Ts, Z)[which(event==1),]
-  
-  ## Estimating equation
-  s <- matrix(0,nrow=nrow(dat1), ncol = p)
-  for (i in 1:nrow(dat1)) {
-    ts <- dat1[i, 1]
-    Z1R <- dat1[i,2:ncol(dat1)]
-    
-    risk <- GetRiskSet(ts, Ts, event)
-    nrisk <- length(risk)
-    if(nrisk==1){
-      t2R <- som1[risk] 
-      t3R <- matrix(som2, ncol = p)[risk,] 
-      
-    }else if(nrisk!=1){
-      
-      t2R <- sum( som1[risk] )
-      t3R <- colSums(matrix(som2, ncol = p)[risk,] ) }
-    
-    s[i,] <- (Z1R - t3R/t2R)
-    
-  }
-  
-  s <- colSums(s)
-  
-  return(s=s)
-  
-}
-
-# ###########solve the equation 
-coxph_estimate<- function(beta0,lambda0,surv_data,maxiter = 50){
-  f <- function(x){
-    equa_estimate  (beta0=x,lambda0,surv_data)
-  }
-  fit_manual <- nleqslv( c(0,0),f, method = c("Broyden", "Newton"))
-  beta0 <- fit_manual$x
-  iterations <- fit_manual$iter
-  converge <- as.numeric(( iterations< maxiter)& (fit_manual$scalex==1) )
-  
-  #xstart <- matrix(rnorm(20,0,1), ncol = 2)
-  #Zero <-  searchZeros(xstart,f)
-  #fit_manual <- multiroot(f,start = rep(0,p), maxiter = maxiter)
- # beta0 <- fit_manual$root
-  #iterations <- fit_manual$iter
-#converge <- as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
-  
-  return(list( beta0 = beta0,converge =converge) )
-}
-
-
-
-###iterrations###########################################
-
-#valeurs initials
-Func_itteration<-function(beta0,lambda0,surv_data,tol= 1e-6,maxits = 500){
-  
-  #data_true <- surv_data[1:n,]
-  data_A <- surv_data[1:n,1:2] #Survival time and censored indicator
-  Ts <-as.matrix( data_A[,1]) 
-  event <- data_A[,2]
-  
-  it = 0
-  converge = FALSE
-  
-while ((!converge) & (it < maxits)){ 
-
-  #expectation  
-
-  lambda2<-Funct_lambda2(lambda0,surv_data)
-init<-Functio_prob(beta0,lambda0,surv_data)
-prob<- init$prob
-
-lambda0.old<-lambda0
-beta0.old<-beta0
-
-lambda0<-Function_lambda0(beta0=beta0.old,lambda0=lambda0.old,surv_data)
-#maximization
-estime<-coxph_estimate(beta0=beta0.old,lambda0=lambda0.old,surv_data,maxiter =50)
-beta0<-estime$beta0
-
-it = it + 1
-converge <-  (abs(beta0.old -beta0)/ (beta0.old+0.01))[1] < tol &&
-                (abs(beta0.old -beta0)/ (beta0.old+0.01))[2] < tol
-
-if (it == maxits) {
-  cat("WARNING! NOT CONVERGENT!", "\n")
-  converge = FALSE
-}else if(is.na(beta0[1]) & is.na(beta0[2])){
-  cat("WARNING! beta0 NOT AVAILABLE!", "\n")
-  converge = FALSE
-}
-
-}
-  
-return(list(beta0=beta0, lambda0=lambda0,prob=prob, converge= converge))
-}
-#############################################################
-library(simsalapar)
-library(doParallel)
-
-doOne2d_estimate<- function(n,m,C,beta0,lambda0,surv_data){
-  
-  #surv_data <- Generate_data(m,n,beta)
-  data_true <- surv_data[1:n,]
-  
-  # Theoretical estimating equation for true data
-  fit_true <- coxph(Surv(Time,delta)~.,data = data_true)
-  coef_true <- as.vector(fit_true$coefficients)
-  var_true <- diag(fit_true$var)
-  
-  fit_estimate  <- Func_itteration(beta0,lambda0,surv_data,tol= 1e-6,maxits = 100)
-  coef_estimate  <- fit_estimate$beta0
-  lambda0_estimate<-fit_estimate$lambda0
-  converge_estimate <- fit_estimate$converge
-  
-  return(list( coef_true=coef_true, coef_estimate =coef_estimate,
-               converge_estimate =converge_estimate,lambda0_estimate=lambda0_estimate ))
-}
-
+  coef_true
+  coef_w_sum2
 ```
 
-
-Simulation with some generated data.
 
 
 
 ```{r}
-
-sigma=1
-alpha=1
-C_sample=cbind(c(0.6,0.2,0.2),c(0.7,0.15,0.15),c(0.8,0.1,0.1))
-m=c(50,100,200)
-n=round((80*m)/100)
-p=2
-nsim=100
-
-beta=c(0.5,-0.5)
-
-#lambda0<-rep(0.5,n)
-#beta0<- c(0.1,0.1) 
-
-##############
-
-scenarios=NULL
-for (i in 1:ncol(C_sample)){
-  scenarios=rbind(scenarios,c(nsim,n[2],m[2],p,sigma,alpha,C_sample[,i]))
-}
-for (i in 4:6){
-  scenarios=rbind(scenarios,c(nsim,n[i-3],m[i-3],p,sigma,alpha,C_sample[,3]))
-}
-
-colnames(scenarios)=c("nsim","n","m", "p","sigma","alpha","Prob_1","Prob_2","Prob_3")
-
-scenarios=data.frame(scenarios)
-
 ################### monte carlos
 
-estimates_survival<- function(nsim,n,m,p,sigma,alpha,C,beta, lambda0,beta0){
+estimates_survival<- function(nsim,n,m,C,p,beta,Q,lambda0,beta0){
   
-  coef_true_s<-matrix(0,nrow = nsim, ncol = p)
+  
+  coef_true_s = matrix(0,nrow = nsim, ncol = p)
     
-  coef_naive_s<- matrix(0,nrow = nsim, ncol = p)
-  converge_naive <- vector()
+  coef_naive_s = matrix(0,nrow = nsim, ncol = p)
+  converge_naive = vector()
 
-  coef_w_sum1_s<- matrix(0,nrow = nsim, ncol = p)
-  converge_w_sum1 <- vector()
+  coef_w_sum1_s = matrix(0,nrow = nsim, ncol = p)
+  converge_w_sum1 = vector()
 
-  coef_w_sum2_s<- matrix(0,nrow = nsim, ncol = p)
-  converge_w_sum2 <- vector()
+  coef_w_sum2_s = matrix(0,nrow = nsim, ncol = p)
+  converge_w_sum2 = vector()
 
-  coef_estimate_s <- matrix(0,nrow = nsim, ncol = p)
-  converge_estimate<- vector()
+  coef_estimate_s = matrix(0,nrow = nsim, ncol = p)
+  converge_estimate = vector()
   
  
   for (i in 1:nsim){
     
-    surv_data =Generate_data(m,n,beta)
-       
-      g_naive <- doOne2d_equat_estimat(n,m,C,beta,surv_data)
-      coef_naive_s[i,] <- g_naive$coef_naive2
-      converge_naive[i] <- g_naive$converge_naive2
       
-      g_sum1 <- doOne2d_w_sum1 (n,m,surv_data,C)
-      coef_w_sum1_s[i,] <- g_sum1$coef_w_sum1
-      converge_w_sum1[i] <- g_sum1$converge_w_sum1 
+      surv_data = Generate_data(m,n,beta)
+      mf = Matrix_function(n,m,C,beta,surv_data)
+      data_true = mf$data_true
+      data_naive = mf$data_naive
+
+      Ts = mf$data_true$Time
+      event = mf$data_true$delta
+      Q = mf$Q
+      XB = mf$XB
+      Z = as.matrix(data_naive[,3:(p+2)]) 
       
-      g_sum2 <- doOne2d_w_sum2 (n,m,surv_data,C)
-      coef_w_sum2_s[i,] <- g_sum2$coef_w_sum2
-      converge_w_sum2[i] <- g_sum2$converge_w_sum2
-     
-      g_estim <- doOne2d_estimate (n,m,C,beta0,lambda0,surv_data)
-      coef_estimate_s [i,] <- g_estim$coef_estimate
-      converge_estimate [i] <- as.numeric (g_estim$converge_estimate ) 
-       
-      coef_true_s[i,] <- g_estim$coef_true
+      lambda0 =  rep(0.1,length(event))
+      beta0 = c(0.1,0.1)
+
+     # prob =  Functio_prob(beta0,lambda0,Ts,event,XB, Q)
+      
+      # Theoretical estimating equation for true and naive data
+      fit_true = coxph(Surv(Time,delta)~.,data = data_true)
+      coef_true_s[i,] = as.vector(fit_true$coefficients)
+      
+      fit_naive = coxph_equa_naive(Ts,event, Z, maxiter = 20)
+      coef_naive_s[i,] = fit_naive$coef
+      converge_naive[i] = fit_naive$converge
+      
+      fit_w_sum1 = coxph_w_sum1(Ts,event,XB, Q,maxiter = 20)
+      coef_w_sum1_s[i,] = fit_w_sum1$coef
+      converge_w_sum1[i] = fit_w_sum1$converge
+      
+      fit_w_sum2 = coxph_w_sum2(Ts,event,XB, Q, maxiter = 20)
+      coef_w_sum2_s[i,] = fit_w_sum2$coef
+      converge_w_sum2[i] = fit_w_sum2$converge
+ 
+      fit_estimate = Func_itteration(beta,beta0,lambda0,Ts,event,XB, Q,tol= 1e-6,maxits = 500)
+      coef_estimate_s[i,] = fit_estimate$beta0
+      converge_estimate[i] = as.numeric(fit_estimate$converge)
+      
 
     }
   
-  return(list( coef_true_s1=coef_true_s[,1],coef_true_s2=coef_true_s[,2],
-   coef_naive_s1=coef_naive_s[,1], coef_naive_s2=coef_naive_s[,2], coef_w_sum1_s1=coef_w_sum1_s[,1],coef_w_sum1_s2=coef_w_sum1_s[,2],
- coef_w_sum2_s1=coef_w_sum2_s[,1], coef_w_sum2_s2=coef_w_sum2_s[,2],  
-coef_estimate_s1=coef_estimate_s[,1],coef_estimate_s2=coef_estimate_s[,2],converge_naive=converge_naive, converge_w_sum1=converge_w_sum1,
-converge_w_sum2=converge_w_sum2,converge_estimate= converge_estimate))  } 
-
-
-
-
+  return(list( coef_true_s1 = coef_true_s[,1], coef_true_s2 = coef_true_s[,2],
+   coef_naive_s1 = coef_naive_s[,1], coef_naive_s2 = coef_naive_s[,2], coef_w_sum1_s1 = coef_w_sum1_s[,1], 
+   coef_w_sum1_s2 = coef_w_sum1_s[,2], coef_w_sum2_s1 = coef_w_sum2_s[,1], coef_w_sum2_s2 = coef_w_sum2_s[,2],  
+coef_estimate_s1 = coef_estimate_s[,1], coef_estimate_s2 = coef_estimate_s[,2], converge_naive = converge_naive, 
+converge_w_sum1= converge_w_sum1,converge_w_sum2 = converge_w_sum2, converge_estimate = converge_estimate))  } 
 ######################################
 ```
 
+```{r}
+p = 2
+m    = 500
+n    = round((80*m)/100)
+beta = c(0.5,-0.5)
+C = c(0.8,0.1,0.1)
+beta_ini=c(0,0)
+nsim=3
+
+r_m = estimates_survival (nsim,n,m,C,p,beta,Q,lambda0,beta0)
+R_T =cbind( mean ( r_m$coef_true_s1), mean(r_m$coef_true_s2))
+R_N = cbind( mean ( r_m$coef_naive_s1), mean(r_m$coef_naive_s2 ))
+R_2 = cbind( mean ( r_m$coef_w_sum1_s1 ), mean(r_m$coef_w_sum1_s2 ))
+R_3 = cbind( mean ( r_m$coef_w_sum2_s1 ), mean(r_m$coef_w_sum2_s2 ))
+R_4 = cbind( mean ( r_m$coef_estimate_s1 ), mean(r_m$coef_estimate_s2 ))
+```
+
+```{r}
+rbind(R_T, R_N ,R_2, R_3, R_4)
+
+```
+
+
+Simulation with some scenarios.
+```{r}
+
+C_sample = cbind(c(0.6,0.2,0.2),c(0.7,0.15,0.15),c(0.8,0.1,0.1))
+m = c(200,500,800)
+n = round((80*m)/100)
+p = 2
+nsim = 500
+beta = c(0.5,-0.5)
+beta_ini=c(0,0)
+#lambda0 = rep(0.5,n)
+#beta0 = c(0.1,0.1) 
+
+##############
+
+scenarios = NULL
+for (i in 1:ncol(C_sample)){
+  scenarios = rbind(scenarios,c(nsim,n[2],m[2],C_sample[,i]))
+}
+for (i in 4:6){
+  scenarios = rbind(scenarios,c(nsim,n[i-3],m[i-3],C_sample[,3]))
+}
+
+colnames(scenarios) = c("nsim","n","m","Prob_1","Prob_2","Prob_3")
+
+scenarios=data.frame(scenarios)
+```
+
+```{r}
+scenarios
+```
 
 Results
 
 ```{r}
-#results
 
-library(ggplot2)
-theme_set( theme_classic() + theme(legend.position = "top")  )
-
-set.seed(23)
-
-beta_true<- matrix(0,nrow(scenarios),p )
-beta_naive<- matrix(0,nrow(scenarios),p )
-beta_w_sum1<- matrix(0,nrow(scenarios),p )
-beta_w_sum2<- matrix(0,nrow(scenarios),p )
-beta_estimate<- matrix(0,nrow(scenarios),p )
-
-L_naive<-vector()
-L_w_sum1<-vector()
-L_w_sum2<-vector()
-L_estimate<-vector()
-
-Sd_true<-matrix(0,nrow(scenarios),p )
-Sd_naive<-matrix(0,nrow(scenarios),p )
-Sd_sum1<- matrix(0,nrow(scenarios),p )
-Sd_sum2<-matrix(0,nrow(scenarios),p )
-Sd_estimate<-matrix(0,nrow(scenarios),p )
-
-rmse_true<-matrix(0,nrow(scenarios),p )
-rmse_naive<-matrix(0,nrow(scenarios),p )
-rmse_sum1<-matrix(0,nrow(scenarios),p )
-rmse_sum2<-matrix(0,nrow(scenarios),p )
-rmse_estimate<-matrix(0,nrow(scenarios),p )
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
 
 for (i in (1:nrow(scenarios))){
   
   nsim=scenarios[i,1]
   n=scenarios[i,2]
   m=scenarios[i,3]
-  p=scenarios[i,4]
-  sigma=scenarios[i,5]
-  alpha=scenarios[i,6]
   C=vector()
-  C[1]=scenarios[i,7]
-  C[2]=scenarios[i,8]
-  C[3]=scenarios[i,9]
+  C[1]=scenarios[i,4]
+  C[2]=scenarios[i,5]
+  C[3]=scenarios[i,6]
   
-  lambda0<-rep(0.5,n_sample)
-  beta0<- c(0.1,0.1) 
+  lambda0 = rep(0.1,n)
+  beta0 = c(0.1,0.1) 
   
-results_sample<- estimates_survival(nsim,n,m,p,sigma,alpha,C, beta, lambda0, beta0)
+  results_sample = estimates_survival(nsim,n,m,C,p,beta,Q,lambda0,beta0) #monte carlos
+
+ #filename = paste0("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results/","nsim=",nsim," n = ",n," m = #",m,"  Prob_1 = ",C[1]," Prob_2 = ",C[2]," Prob_3 = ", C[3],".Rdata")
+  filename = paste0("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results/","scenario=",i,
+                    "_m=",m, "_prob1=", C[1], ".Rdata")
+
+  save(results_sample,file = filename)
   
+}
 
-beta_naive[i,1]<- mean(results_sample$coef_naive_s1)
-beta_naive[i,2]<- mean(results_sample$coef_naive_s2)
+```
 
-beta_w_sum1[i,1]<- mean(results_sample$coef_w_sum1_s1)
-beta_w_sum1[i,2]<-mean(results_sample$coef_w_sum1_s2)
+```{r}
+# one file
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results/")
+load("scenario=1_m=1000_prob1=0.6.Rdata")
+results_sample = results_sample
+```
 
-beta_w_sum2[i,1]<-mean(results_sample$coef_w_sum2_s1)
-beta_w_sum2[i,2]<-mean(results_sample$coef_w_sum2_s2)
 
-beta_true[i,1] <-mean(results_sample$coef_true_s1)
-beta_true[i,2] <-mean(results_sample$coef_true_s2)
+```{r}
 
-beta_estimate[i,1]<-mean(results_sample$coef_estimate_s1 )
-beta_estimate[i,2]<-mean(results_sample$coef_estimate_s2 )
+# list of files to load
 
-L_naive[i] <- length(which(results_sample$converge_naive==0))
+############results
 
-L_w_sum1[i]<- length(which(results_sample$converge_w_sum1==0))
 
-L_w_sum2[i] <-length( which(results_sample$converge_w_sum2==0))
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
+#source("8_scenarios.R")
 
-L_estimate[i] <- length(which(results_sample$converge_estimate==0))
+# list of files to load
+#library(parallel) 
 
-Sd_naive[i,1]<-sd( results_sample$coef_naive_s1) 
-Sd_naive[i,2]<-sd( results_sample$coef_naive_s2) 
+file_list <- c("scenario=1_m=500_prob1=0.6.Rdata", 
+               "scenario=2_m=500_prob1=0.7.Rdata",  
+               "scenario=3_m=500_prob1=0.8.Rdata",
+               "scenario=4_m=200_prob1=0.8.Rdata",
+               "scenario=5_m=500_prob1=0.8.Rdata",
+               "scenario=6_m=800_prob1=0.8.Rdata") 
 
-Sd_sum1[i,1]<-sd(results_sample$coef_w_sum1_s1)
-Sd_sum1[i,2] <-sd(results_sample$coef_w_sum1_s2)
 
-Sd_sum2 [i,1]<-sd(results_sample$coef_w_sum2_s1)
-Sd_sum2[i,2] <-sd(results_sample$coef_w_sum2_s2)
+r = nrow(scenarios) 
 
-Sd_true[i,1] <- sd(results_sample$coef_true_s1)
-Sd_true[i,2] <- sd(results_sample$coef_true_s2)
+funct_tableau <- function(file_list,r,p){
+  
+  beta_true = matrix(0,r,p )
+  beta_naive = matrix(0,r,p )
+  beta_w_sum1 = matrix(0,r,p )
+  beta_w_sum2 = matrix(0,r,p )
+  beta_estimate = matrix(0,r,p )
+  
+  L_naive = vector()  # number of convergences
+  L_w_sum1 = vector()
+  L_w_sum2 = vector()
+  L_estimate = vector()
+  
+  Sd_true = matrix(0,r,p ) # standard deviation
+  Sd_naive = matrix(0,r,p )
+  Sd_sum1 = matrix(0,r,p )
+  Sd_sum2 = matrix(0,r,p )
+  Sd_estimate = matrix(0,r,p )
+  
+  rmse_true = matrix(0,r,p ) # mean squart error
+  rmse_naive = matrix(0,r,p )
+  rmse_sum1 = matrix(0,r,p )
+  rmse_sum2 = matrix(0,r,p )
+  rmse_estimate = matrix(0,r,p )
+  
+  for (i in 1:length(file_list)) {
+    
+    setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results")
+    load(file_list[i])
+    results_sample = results_sample
+    
+    beta_true[i,] = c (mean(results_sample$coef_true_s1), mean(results_sample$coef_true_s2))
+    beta_naive[i,] = rbind(  mean(results_sample$coef_naive_s1), mean(results_sample$coef_naive_s2))
+    beta_w_sum1[i,] = rbind( mean(results_sample$coef_w_sum1_s1), mean(results_sample$coef_w_sum1_s2))
+    beta_w_sum2[i,] = rbind( mean(results_sample$coef_w_sum2_s1), mean(results_sample$coef_w_sum2_s2))
+    beta_estimate[i,] = rbind( mean(results_sample$coef_estimate_s1 ), mean(results_sample$coef_estimate_s2 ))
+    
+    
+    L_naive[i] = length(which(results_sample$converge_naive==0))
+    L_w_sum1[i] = length(which(results_sample$converge_w_sum1==0))
+    L_w_sum2[i] = length( which(results_sample$converge_w_sum2==0))
+    L_estimate[i] = length(which(results_sample$converge_estimate==0))
+    
+    
+    Sd_true[i,] = rbind( sd(results_sample$coef_true_s1), sd(results_sample$coef_true_s2))
+    Sd_naive[i,] = rbind( sd( results_sample$coef_naive_s1) , sd( results_sample$coef_naive_s2) )
+    Sd_sum1[i,] = rbind( sd(results_sample$coef_w_sum1_s1), sd(results_sample$coef_w_sum1_s2))
+    Sd_sum2 [i,] = rbind( sd(results_sample$coef_w_sum2_s1),sd(results_sample$coef_w_sum2_s2))
+    Sd_estimate[i,] = rbind( sd(results_sample$coef_estimate_s1),sd(results_sample$coef_estimate_s2))
+    
+    
+    rmse_true[i,] = rbind (sqrt( mean((results_sample$coef_true_s1- beta[1])^2)),
+                           sqrt( mean((results_sample$coef_true_s2+  beta[2])^2)))
+    
+    rmse_naive[i,] = rbind( sqrt( mean((results_sample$coef_naive_s1- beta[1])^2)),
+                            sqrt( mean((results_sample$coef_naive_s2+  beta[2])^2)))
+    
+    rmse_sum1[i,] = rbind( sqrt( mean((results_sample$coef_w_sum1_s1- beta[1])^2)),
+                           sqrt( mean((results_sample$coef_w_sum1_s2- beta[2])^2)))
+    
+    rmse_sum2[i,] = rbind( sqrt( mean((results_sample$coef_w_sum2_s1- beta[1])^2)),
+                           sqrt( mean((results_sample$coef_w_sum2_s2- beta[2])^2)))
+    
+    rmse_estimate[i,] = rbind( sqrt( mean((results_sample$coef_estimate_s1 -  beta[1])^2)),
+                               sqrt( mean((results_sample$coef_estimate_s2 -  beta[2])^2)))
+    
+    
+  }
+  
+  return( list( beta_true = beta_true, beta_naive=beta_naive,beta_w_sum1=beta_w_sum1,
+   beta_w_sum2=beta_w_sum2, beta_estimate=beta_estimate,L_naive =L_naive,L_w_sum1=L_w_sum1,L_w_sum2=L_w_sum2,L_estimate=L_estimate, Sd_true= Sd_true,Sd_naive=Sd_naive ,Sd_sum1=Sd_sum1,  Sd_sum2=Sd_sum2, Sd_estimate =Sd_estimate, rmse_true = rmse_true, rmse_naive = rmse_naive,rmse_sum1 = rmse_sum1, rmse_sum2 = rmse_sum2, rmse_estimate = rmse_estimate))
+  
+}
+#####################
 
-Sd_estimate[i,1] <- sd(results_sample$coef_estimate_s1)
-Sd_estimate[i,2] <- sd(results_sample$coef_estimate_s2)
+Results_scenario = as.data.frame(funct_tableau(file_list,r,p))
+rownames(Results_scenario )= paste0( "Scenario", 1:nrow(Results_scenario))
 
-rmse_true[i,1]<-sqrt( mean((results_sample$coef_true_s1-0.5)^2))
-rmse_true[i,2]<-sqrt( mean((results_sample$coef_true_s2+0.5)^2))
 
-rmse_naive[i,1]<-sqrt( mean((results_sample$coef_naive_s1-0.5)^2))
-rmse_naive[i,2]<-sqrt( mean((results_sample$coef_naive_s2+0.5)^2))
+```
 
-rmse_sum1[i,1]<-sqrt( mean((results_sample$coef_w_sum1_s1-0.5)^2))
-rmse_sum1[i,2]<-sqrt( mean((results_sample$coef_w_sum1_s2-0.5)^2))
 
-rmse_sum2[i,1]<-sqrt( mean((results_sample$coef_w_sum2_s1-0.5)^2))
-rmse_sum2[i,2]<-sqrt( mean((results_sample$coef_w_sum2_s2-0.5)^2))
+```{r}
+r = nrow(scenarios) 
+p = 2
+ Results_scenario = as.data.frame(funct_tableau(file_list,r,p))
+```
 
-rmse_estimate[i,1]<-sqrt( mean((results_sample$coef_estimate_s1 - 0.5)^2))
-rmse_estimate[i,2]<-sqrt( mean((results_sample$coef_estimate_s2 - 0.5)^2))
+```{r}
+
+
+### boxplots
+
+
+scenarios_boxplot=scenarios # the last scenario 6
+
+library(ggplot2)
+library(gridExtra)
+
+levelsvec = numeric(0)
+
+
+file_list <- c("scenario=1_m=500_prob1=0.6.Rdata", 
+               "scenario=2_m=500_prob1=0.7.Rdata",  
+               "scenario=3_m=500_prob1=0.8.Rdata",
+               "scenario=4_m=200_prob1=0.8.Rdata",
+               "scenario=5_m=500_prob1=0.8.Rdata",
+               "scenario=6_m=800_prob1=0.8.Rdata") 
+
+for (i in (1:nrow(scenarios_boxplot))){
+  nsim = scenarios_boxplot[i,1]
+  n = scenarios_boxplot[i,2]
+  m = scenarios_boxplot[i,3]
+  Prob1 = scenarios_boxplot[i,4]
+  Prob2 = scenarios_boxplot[i,5]
+  Prob3 = scenarios_boxplot[i,6]
+
+  Prob_sample = paste0("(",Prob1,",",Prob2,",",Prob3,")") 
+  
+  setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results")
+  load(file_list[i])
+  results_sample = results_sample
+  
+  levelsvec = c(levelsvec,Prob_sample)
+
+  boxplot_beta0_true = cbind(rep(1,times=nsim),
+                               rep(Prob_sample,times=nsim),
+                               results_sample$coef_true_s1,
+                               results_sample$coef_true_s2)
+  
+  boxplot_beta0_naive = cbind(rep(2,times=nsim),
+                      rep(Prob_sample,times=nsim),
+                      results_sample$coef_naive_s1,
+                      results_sample$coef_naive_s2)
+  
+  boxplot_beta0_w_sum1 = cbind(rep(3,times=nsim),
+                      rep(Prob_sample,times=nsim),
+                      results_sample$coef_w_sum1_s1,
+                      results_sample$coef_w_sum1_s2)
+  
+  boxplot_beta0_w_sum2 = cbind(rep(4,times=nsim),
+                                rep(Prob_sample,times=nsim),
+                                results_sample$coef_w_sum2_s1,
+                                results_sample$coef_w_sum2_s2)
+  
+  boxplot_beta0_estimate = cbind(rep(5,times=nsim),
+                                rep(Prob_sample,times=nsim),
+                                results_sample$coef_estimate_s1,
+                                results_sample$coef_estimate_s2)
+  
+  boxplot_beta0 = rbind(boxplot_beta0_true,boxplot_beta0_naive,boxplot_beta0_w_sum1,
+                        boxplot_beta0_w_sum2,boxplot_beta0_estimate )
+  
+  
+  titlename = paste0("n=",unique(scenarios_boxplot[i,2]),
+                   ", ","m=",unique(scenarios_boxplot[i,3]))
+
+colnames(boxplot_beta0) = c("Estimator", "Prob","beta0[1]","beta0[2]")
+
+boxplot_beta0 = data.frame(boxplot_beta0)
+
+boxplot_beta0[,1] = factor(boxplot_beta0[,1],
+      levels = 1:5, labels = c("True"," Naive", "w_sum1", "w_sum2", "EM"))
+
+boxplot_beta0[,2] = factor(boxplot_beta0[,2],
+                         levels = levelsvec,labels = levelsvec)
+
+boxplot_beta0[,3] = as.numeric(boxplot_beta0[,3] )
+boxplot_beta0[,4] = as.numeric(boxplot_beta0[,4] )
+# Boxplots for beta0
+
+beta0_1 = ggplot(boxplot_beta0,aes(x=Prob,y= beta0.1.,fill=Estimator))+
+  geom_boxplot()+
+  xlab("Q_matrix")+
+  ylab(quote(hat(beta)[0]))+
+  geom_hline(yintercept=0.5,lty=1,col="orange")+
+  ggtitle(titlename)
+
+
+beta0_2 = ggplot(boxplot_beta0,aes(x=Prob,y= beta0.2.,fill=Estimator))+
+  geom_boxplot()+
+  xlab("Q_matrix")+
+  ylab(quote(hat(beta)[0]))+
+  geom_hline(yintercept=-0.5,lty=1,col="orange")+
+  ggtitle(titlename)
+
+print(beta0_1)
+print(beta0_2)
+
+  
+}
+
+```
+
+```{r}
+
+titlename = paste0("n=",unique(scenarios_boxplot[,2]),
+                   ", ","m=",unique(scenarios_boxplot[,3]))
+
+colnames(boxplot_beta0) = c("Estimator", "Prob","beta0[1]","beta0[2]")
+
+boxplot_beta0 = data.frame(boxplot_beta0)
+
+boxplot_beta0[,1] = factor(boxplot_beta0[,1],
+      levels = 1:5, labels = c("True"," Naive", "w_sum1", "w_sum2", "EM"))
+
+boxplot_beta0[,2] = factor(boxplot_beta0[,2],
+                         levels = levelsvec,labels = levelsvec)
+
+boxplot_beta0[,3] = as.numeric(boxplot_beta0[,3] )
+boxplot_beta0[,4] = as.numeric(boxplot_beta0[,4] )
+# Boxplots for beta0
+
+beta0_1 = ggplot(boxplot_beta0,aes(x=Prob,y= beta0.1.,fill=Estimator))+
+  geom_boxplot()+
+  xlab("Q_matrix")+
+  ylab(quote(hat(beta)[0]))+
+  geom_hline(yintercept=0.5,lty=1,col="orange")+
+  ggtitle(titlename)
+beta0_1
+
+beta0_2 = ggplot(boxplot_beta0,aes(x=Prob,y= beta0.2.,fill=Estimator))+
+  geom_boxplot()+
+  xlab("Q_matrix")+
+  ylab(quote(hat(beta)[0]))+
+  geom_hline(yintercept=-0.5,lty=1,col="orange")+
+  ggtitle(titlename)
+beta0_2
+
+```
+
+
+
+boxplot
+```{r}
+
+
+library(xtable)
+s = 5*r
+tb = matrix(0, nrow = s, ncol = 11) # table of summary 
+for (i in s) {
+  tb[,i] = c(   )
+}
+
+tb <- xtable(Base_plot,digits=3,caption="Résultats sur les profils-lignes pour les 3 premiers axes factoriels")
 
 
 Base_plot<- as.data.frame(results_sample[1:10] )
 colnames(Base_plot)=c( "beta_true_1", "beta_true_2","beta_naive_1","beta_naive_2", "beta_w_sum1_1","beta_w_sum1_2","beta_w_sum2_1", "beta_w_sum2_2", "beta_estimate_1", "beta_estimate_2")
 
+
+print(tb,include.rownames=TRUE,  sanitize.text.function = function(x){x},tabular.environment='longtable', hline.after = c(-1,0),floating=FALSE,size="\\scriptsize")
+
 results_sample_plot <- boxplot(Base_plot, col=c("gray","gray","red","red", "green","green","blue","blue","orange", "orange" ), boxwex=2)
 
-}
+
 
 ####################
 ```
 
 
 
- For C= (0.8; 0.1; 0.1), we have the following  box-plot:
- 
-```{r}
-library(ggplot2)
-
-theme_set( theme_classic() + theme(legend.position = "top")  )
-
-Base_plot<- as.data.frame(results_sample[1:10] )
-colnames(Base_plot)=c( "beta_true_1", "beta_true_2","beta_naive_1","beta_naive_2", "beta_w_sum1_1","beta_w_sum1_2","beta_w_sum2_1", "beta_w_sum2_2", "beta_estimate_1", "beta_estimate_2")
-
-results_sample_plot <- boxplot(Base_plot, col=c("gray","gray","red","red", "green","green","blue","blue","orange", "orange" ))
-
-
-
-```
-
-
 ## 
 
-```{r}
 
-coef_naive1 <-mean(results_sample$coef_naive_s1)
-coef_naive2 <-mean(results_sample$coef_naive_s2)
-
-coef_w_sum1_1<-mean(results_sample$coef_w_sum1_s1)
-coef_w_sum1_2<-mean(results_sample$coef_w_sum1_s2)
-
-coef_true_1<-mean(results_sample$coef_true_s1)
-coef_true_2<-mean(results_sample$coef_true_s2)
-
-coef_w_sum2_1<-mean(results_sample$coef_w_sum2_s1)
-coef_w_sum2_2<-mean(results_sample$coef_w_sum2_s2)
-
-coef_estimate_1<-mean(results_sample$coef_estimate_s1 )
-coef_estimate_2<-mean(results_sample$coef_estimate_s2 )
-converge_estimate<-results_sample$converge_estimate
-```
-
-##
 
 ```{r}
 
