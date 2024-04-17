@@ -369,12 +369,12 @@ equa_estimate <- function(beta,prob,Ts,event,XB) {
 ```{r}
 # ###########solve the equation 
 
-coxph_estimate<- function(beta,prob,Ts,event,XB,beta_ini,maxiter = 50){
+coxph_estimate<- function(prob,Ts,event,XB,beta_ini,maxiter = 50){
   
   f <- function(x){
     equa_estimate  (beta= x,prob,Ts,event,XB)
   }
-  fit_manual <- nleqslv( c(0,0),f, method = c("Broyden", "Newton"))
+  fit_manual <- nleqslv( c(beta_ini[1],beta_ini[2]),f, method = c("Broyden", "Newton"))
   beta0 <- fit_manual$x
   iterations <- fit_manual$iter
   converge <- as.numeric(( iterations< maxiter)& (fit_manual$scalex==1) )

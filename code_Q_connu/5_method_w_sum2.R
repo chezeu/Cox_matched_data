@@ -1,14 +1,8 @@
 
 
-##################
 
-#1. Finding the risk set R(t) given some time t
-GetRiskSet <- function(time_of_interest, time_vector, event_vector) {
-  
-  return(which(((time_vector == time_of_interest & event_vector == 1) | (time_vector > time_of_interest))))
-  
-}
-######################
+setwd( "C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
+source("2_risk_function.R")
 #################
 
 equa_W_sum2 <- function(beta,Ts,event,XB, Q) {
@@ -20,7 +14,7 @@ equa_W_sum2 <- function(beta,Ts,event,XB, Q) {
   eXbeta = exp(X%*% beta)
   XeXbeta = X*matrix(rep(exp(X%*% beta),p), ncol = p)
   
-  # somme des deux valeurs max
+  # the maximum values
   Z = matrix(0, nrow = n, ncol = p)
   som1 = vector()                  # denominateur
   som2 = matrix(0, nrow = n, ncol = p) #numerateur
@@ -47,7 +41,7 @@ equa_W_sum2 <- function(beta,Ts,event,XB, Q) {
   }  
   
   
-  dat1 = cbind(Ts,Z)[which(event==1),]
+  dat1 = cbind(Ts,Z)[which(event==1),] 
   ## Estimating equation
   s = matrix(0,nrow=nrow(dat1), ncol = p)
   for (i in 1:nrow(dat1)) {
@@ -72,7 +66,8 @@ equa_W_sum2 <- function(beta,Ts,event,XB, Q) {
   s = colSums(s)
   return(H_w_sum2 = s)  
 }
-# ###########solve the equations 
+# ########## 
+# solve the equations 
 
 
 coxph_w_sum2 <- function(Ts,event,XB, Q, maxiter = 20){

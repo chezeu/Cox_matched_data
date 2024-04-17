@@ -1,17 +1,8 @@
 
+setwd( "C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
+source("2_risk_function.R")
 
-##################
-
-#1. Finding the risk set R(t) given some time t
-GetRiskSet <- function(time_of_interest, time_vector, event_vector) {
-  
-  return(which(((time_vector == time_of_interest & event_vector == 1) | (time_vector > time_of_interest))))
-  
-}
-######################
-
-
-################# estimating equation
+################# estimating equation of the weighted average equation 
 
 equa_W_sum1 <- function(beta,Ts,event,XB, Q) {
   
@@ -24,10 +15,10 @@ equa_W_sum1 <- function(beta,Ts,event,XB, Q) {
   ##les sommes pour Z
   Z = Q%*%X
   
-  ## les sommes q*exp(beta x) pour tilfe_f
+  ## the value q*exp(beta x) for tilfe_f
   som1 =  Q%*%eXbeta
   
-  ##  les sommes pour tilde_g
+  ##  the value q*x*exp(beta x) for tilde_g
   som2 = Q%*%XeXbeta
   
   dat1 = cbind(Ts,Z)[which(event==1),] #new  data

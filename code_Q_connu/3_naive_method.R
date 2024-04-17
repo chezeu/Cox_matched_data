@@ -1,8 +1,8 @@
 
 #########  multinomiale Q
 
-
-source("2_matrix_generate.r")
+setwd( "C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
+source("2_risk_function.R")
 #################
 # equation naive
 equa_naive <- function(beta,Ts,event, Z) {

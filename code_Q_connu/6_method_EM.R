@@ -1,23 +1,10 @@
 
 
-###1. Finding the risk set R(t) given some time t
 
-GetRiskSet <- function(time_of_interest, time_vector, event_vector) {
-  
-  return(which(((time_vector == time_of_interest & event_vector == 1) | (time_vector > time_of_interest))))
-  
-}
+setwd( "C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
+source("2_risk_function.R")
 
-
-#####
-#number of observations before time t
-
-observe<- function(time_of_interest, time_vector, event_vector) {
-  return(which( (time_vector <= time_of_interest) ))
-}
-####
-
-#cumulative function
+################### cumulative function
 
 Funct_lambda2<-function(lambda0,Ts,event){
   #lambda0<- rep(0.5,length(event))
@@ -34,13 +21,12 @@ Funct_lambda2<-function(lambda0,Ts,event){
   return(lambda2=lambda2)
 }
 ########
-### proba aposteriorie (pi)
+### proba aposteriories (pi)
 
-Functio_prob<-function(beta0,lambda0,Ts,event,XB, Q){
+Functio_prob<-function(beta0,lambda0,lambda2,Ts,event,XB, Q){
   #beta0<- c(0.1,0.1) 
-  #lambda0<- rep(0.5,length(event))
+  #lambda0<- rep(0.1,length(event))
   
-  lambda2 = Funct_lambda2(lambda0,Ts,event)
   X = as.matrix(XB, ncol = p) # covariates
   
   eXbeta0 = exp(X%*% beta0)
@@ -68,9 +54,8 @@ Functio_prob<-function(beta0,lambda0,Ts,event,XB, Q){
 }
 #############
 ################ estimations ###################################
-
-#lambda0
-Function_lambda0<-function(prob,beta0,Ts,event,XB, Q){
+#lambda0 ( baseline risk function)
+Function_lambda0<-function(prob,beta0,Ts,event,XB){
   
   p = ncol(XB)
   n = length(Ts)
@@ -80,30 +65,33 @@ Function_lambda0<-function(prob,beta0,Ts,event,XB, Q){
   
   som1 = prob%*%eXbeta0 # somme sur les j
   
-  s = vector()
+  lambda0_1 = vector()
+  
   for (i in 1:n) {
     
-    Yi = as.numeric( Ts >= Ts[i])# at risk
-    risq = which(Yi==1)
-    nrisk = length(Yi)
-    
-    if(nrisk==1){
-      t2R = som1[risq] 
-    }else if(nrisk!=1){
+    if(event[i] == 0){lambda0_1[i] = 0
+    }else if(event[i] != 0 ){
       
-      t2R = sum( som1[risq] )
+      risq = GetRiskSet (Ts[i], Ts, event)
+      nrisk = length(risq)
+      
+      if(nrisk==1){
+        t2R = som1[risq] 
+      }else if(nrisk!=1){
+        
+        t2R = sum( som1[risq] )
+      }
+      
+      lambda0_1[i] = (1/t2R)
     }
-    
-    s[i] = (1/t2R)*event[i]
   }
-  
-  return( lambda0_1 = s)
+  return( lambda0_1 = lambda0_1)
 }
 
 ######################
 #  estimating equation ########################
 
-equa_estimate <- function(beta,prob,Ts,event,XB, Q) {
+equa_estimate <- function(beta,prob,Ts,event,XB) {
   
   p = ncol(XB)
   n = length(Ts)
@@ -116,11 +104,11 @@ equa_estimate <- function(beta,prob,Ts,event,XB, Q) {
   
   Z = prob%*%X 
   
-  #### les sommes q*exp(beta x) pour tilfe_f
+  #### values for q*exp(beta x) pour tilfe_f
   
   som1 = prob%*%eXbeta
   
-  ###  les sommes pour tilde_g
+  ###  values for q*x*exp(beta x)
   
   som2 = prob%*%XeXbeta
   
@@ -128,6 +116,7 @@ equa_estimate <- function(beta,prob,Ts,event,XB, Q) {
   
   ## Estimating equation
   s = matrix(0,nrow=nrow(dat1), ncol = p)
+  
   for (i in 1:nrow(dat1)) {
     ts = dat1[i, 1]
     Z1R = dat1[i,2:ncol(dat1)]
@@ -156,10 +145,10 @@ equa_estimate <- function(beta,prob,Ts,event,XB, Q) {
 #####################
 # ###########solve the equation 
 
-coxph_estimate<- function(beta,prob,Ts,event,XB, Q,beta_ini,maxiter = 50){
+coxph_estimate<- function(prob,Ts,event,XB,beta_ini,maxiter = 50){
   
   f <- function(x){
-    equa_estimate  (beta= x,prob,Ts,event,XB, Q)
+    equa_estimate  (beta= x,prob,Ts,event,XB)
   }
   fit_manual <- nleqslv( c(beta_ini[1],beta_ini[2]),f, method = c("Broyden", "Newton"))
   beta0 <- fit_manual$x
@@ -181,7 +170,7 @@ coxph_estimate<- function(beta,prob,Ts,event,XB, Q,beta_ini,maxiter = 50){
 
 #valeurs initials
 
-Func_itteration<-function(beta,beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500){
+Func_itteration<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500){
   
   p = ncol(XB)
   n = length(Ts)
@@ -199,12 +188,12 @@ Func_itteration<-function(beta,beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 
     
     lambda2 = Funct_lambda2(lambda0.old,Ts,event)
     
-    prob = Functio_prob(beta0.old,lambda0.old,Ts,event,XB, Q)
+    prob = Functio_prob(beta0.old,lambda0.old,lambda2,Ts,event,XB, Q)
     
     
     #maximization
-    lambda0 = Function_lambda0 (prob,beta0, Ts,event,XB, Q)
-    estime = coxph_estimate (beta,prob,Ts,event,XB, Q,beta_ini, maxiter = 50)
+    lambda0 = Function_lambda0 (prob,beta0,Ts,event,XB)
+    estime = coxph_estimate (prob,Ts,event,XB,beta_ini, maxiter = 50)
     beta0 = estime$beta0
     
     converge = (sum ((beta0.old -beta0))^2 + sum ( (lambda0.old - lambda0)^2 ) ) < tol  
