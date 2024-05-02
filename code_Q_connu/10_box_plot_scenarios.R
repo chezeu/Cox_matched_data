@@ -8,14 +8,16 @@ setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
 source("7_scenarios.R")
 
 #scenarios_boxplot=scenarios[scenarios$m==100,] 
-#scenarios_boxplot=scenarios[scenarios$m==500,] 
-scenarios_boxplot=scenarios[scenarios$m==800,] 
+scenarios_boxplot=scenarios[scenarios$m==500,] 
+#scenarios_boxplot=scenarios[scenarios$m==700,] 
 
 varies = "Q"
 fixed = "m"
 
 library(ggplot2)
 library(gridExtra)
+library(xtable)
+
 
 boxplot_beta0 = NULL
 
@@ -66,8 +68,14 @@ for (i in (1:nrow(scenarios_boxplot ))){
                                  results_sample$coef_estimate_s1,
                                  results_sample$coef_estimate_s2)
   
+  boxplot_beta0_estimate_Nd = cbind(rep(6,times=nsim),
+                                 rep(m,times=nsim),
+                                 rep(  Prob_sample , times=nsim ),
+                                 results_sample$coef_estimate_s_Nd1,
+                                 results_sample$coef_estimate_s_Nd2)
+  
   boxplot_beta0 = rbind(boxplot_beta0,boxplot_beta0_true,boxplot_beta0_naive,boxplot_beta0_w_sum1,
-                        boxplot_beta0_w_sum2,boxplot_beta0_estimate )
+          boxplot_beta0_w_sum2,boxplot_beta0_estimate,boxplot_beta0_estimate_Nd  )
   
 }
 
@@ -79,7 +87,7 @@ colnames(boxplot_beta0) = c("Estimator",fixed, varies, "beta0.1","beta0.2")
 boxplot_beta0 = data.frame(boxplot_beta0)
 
 boxplot_beta0[,1] = factor(boxplot_beta0[,1],
-                           levels = 1:5, labels = c("True"," Naive", "w_sum1", "w_sum2", "EM"))
+                           levels = 1:6, labels = c("True"," Naive", "w_sum1", "w_sum2", "EM","EM_Nd"))
 
 
 boxplot_beta0[,4] = as.numeric(boxplot_beta0[,4] )
@@ -113,8 +121,8 @@ setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
 source("7_scenarios.R")
 
 #scenarios_boxplot=scenarios[scenarios$Prob_1==0.6,] 
-scenarios_boxplot=scenarios[scenarios$Prob_1==0.7,] 
-#scenarios_boxplot=scenarios[scenarios$Prob_1==0.8,] 
+#scenarios_boxplot=scenarios[scenarios$Prob_1==0.7,] 
+scenarios_boxplot=scenarios[scenarios$Prob_1==0.8,] 
 
 varies="m"
 fixed = "Prob_1"
@@ -170,8 +178,14 @@ for (i in (1:nrow(scenarios_boxplot ))){
                                  results_sample$coef_estimate_s1,
                                  results_sample$coef_estimate_s2)
   
+  boxplot_beta0_estimate_Nd = cbind(rep(6,times=nsim),
+                                    rep(m,times=nsim),
+                                    rep(  Prob_sample , times=nsim ),
+                                    results_sample$coef_estimate_s_Nd1,
+                                    results_sample$coef_estimate_s_Nd2)
+  
   boxplot_beta0 = rbind(boxplot_beta0,boxplot_beta0_true,boxplot_beta0_naive,boxplot_beta0_w_sum1,
-                        boxplot_beta0_w_sum2,boxplot_beta0_estimate )
+                        boxplot_beta0_w_sum2,boxplot_beta0_estimate,boxplot_beta0_estimate_Nd  )
   
   
 }
@@ -184,7 +198,7 @@ colnames(boxplot_beta0) = c("Estimator",varies,fixed,  "beta0.1","beta0.2")
 boxplot_beta0 = data.frame(boxplot_beta0)
 
 boxplot_beta0[,1] = factor(boxplot_beta0[,1],
-                           levels = 1:5, labels = c("True"," Naive", "w_sum1", "w_sum2", "EM"))
+                           levels = 1:6, labels = c("True"," Naive", "w_sum1", "w_sum2", "EM", "EM_Nd"))
 
 boxplot_beta0[,4] = as.numeric(boxplot_beta0[,4] )
 boxplot_beta0[,5] = as.numeric(boxplot_beta0[,5] )

@@ -13,6 +13,7 @@ source("3_naive_method.R")
 source("4_method_w_sum1.R")
 source("5_method_w_sum2.R")
 source("6_method_EM.R")
+source("EM_with_N_d.R")
 source("7_scenarios.R")
 
 
@@ -34,6 +35,9 @@ estimates_survival<- function(nsim,n,m,C,p,beta,Q,lambda0,beta0){
   coef_estimate_s = matrix(0,nrow = nsim, ncol = p)
   converge_estimate = vector()
   
+  coef_estimate_s_Nd = matrix(0,nrow = nsim, ncol = p)
+  converge_estimate_Nd = vector()
+  
   
   for (i in 1:nsim){
     
@@ -50,6 +54,9 @@ estimates_survival<- function(nsim,n,m,C,p,beta,Q,lambda0,beta0){
     Z = as.matrix(data_naive[,3:(p+2)]) 
     
     lambda0 =  rep(0.1,length(event))
+    L = which(event == 0)
+    lambda0 [L] = 0
+    
     beta0 = c(0.1,0.1)
     
       # Theoretical estimating equation for true and naive data
@@ -76,14 +83,21 @@ estimates_survival<- function(nsim,n,m,C,p,beta,Q,lambda0,beta0){
     coef_estimate_s[i,] = fit_estimate$beta0
     converge_estimate[i] = as.numeric(fit_estimate$converge)
     
+    # EM with N_d
+    fit_estimate_Nd = Func_itteration_Nd(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6,maxits = 500)
+    coef_estimate_s_Nd[i,] = fit_estimate_Nd$beta0
+    converge_estimate_Nd[i] = as.numeric(fit_estimate_Nd$converge)
+    
     
   }
   
   return(list( coef_true_s1 = coef_true_s[,1], coef_true_s2 = coef_true_s[,2],
                coef_naive_s1 = coef_naive_s[,1], coef_naive_s2 = coef_naive_s[,2], coef_w_sum1_s1 = coef_w_sum1_s[,1], 
                coef_w_sum1_s2 = coef_w_sum1_s[,2], coef_w_sum2_s1 = coef_w_sum2_s[,1], coef_w_sum2_s2 = coef_w_sum2_s[,2],  
-               coef_estimate_s1 = coef_estimate_s[,1], coef_estimate_s2 = coef_estimate_s[,2], converge_naive = converge_naive, 
-               converge_w_sum1= converge_w_sum1,converge_w_sum2 = converge_w_sum2, converge_estimate = converge_estimate))  } 
+               coef_estimate_s1 = coef_estimate_s[,1], coef_estimate_s2 = coef_estimate_s[,2], 
+               coef_estimate_s_Nd1 = coef_estimate_s_Nd[,1], coef_estimate_s_Nd2 = coef_estimate_s_Nd[,2],converge_naive = converge_naive, 
+               converge_w_sum1= converge_w_sum1,converge_w_sum2 = converge_w_sum2, converge_estimate = converge_estimate,
+               converge_estimate_Nd = converge_estimate_Nd ))  } 
 ######################################
 
 

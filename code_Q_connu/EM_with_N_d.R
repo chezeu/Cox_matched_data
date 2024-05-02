@@ -6,24 +6,33 @@ source("2_risk_function.R")
 
 ################### cumulative function
 
-Funct_lambda2<-function(lambda0,Ts,event){
+Funct_lambda2_Nd<-function(lambda0,Ts,event){
   #lambda0<- rep(0.1,length(event))
   
   n = length(Ts)
+  
   lambda2 = vector()
+  # vector N_d
+  vec = NULL
+for(j in 1:n) {
+      N_d = risk_nber(Ts[j], Ts) 
+      vec = c(vec, N_d)
+    }
+  
   for (i in 1:n) {
-    vi = observe(Ts[i], Ts,event)
-    lambda2[i] =  sum(lambda0[vi] )  
+    wi = observe_Nd(Ts[i], Ts)
+    lambda2[i] =  sum(lambda0[wi]/vec[wi] )  
   }
   return(lambda2=lambda2)
 }
 ########
+
 ### proba aposteriories (pi)
 
-Functio_prob<-function(beta0,lambda0,lambda2,Ts,event,XB, Q){
+Functio_prob_Nd<-function(beta0,lambda0,lambda2,Ts,event,XB, Q){
   #beta0<- c(0.1,0.1) 
   #lambda0<- rep(0.1,length(event))
-
+  
   X = as.matrix(XB, ncol = p) # covariates
   
   eXbeta0 = exp(X%*% beta0)
@@ -36,14 +45,14 @@ Functio_prob<-function(beta0,lambda0,lambda2,Ts,event,XB, Q){
   prob = matrix(0,n,m)
   for (i in 1:n) {
     
-    numerator = vector()
+    numerateur = vector()
     for (j in 1:m) {
-      numerator[j] = Q[i,j] * ( lambda0[i]*eXbeta0[j])^event[i] * exp(-lambda2[i]* eXbeta0[j] )
+      numerateur[j] = Q[i,j] * ( lambda0[i]*eXbeta0[j])^event[i] * exp(-lambda2[i]* eXbeta0[j] )
     }
     
-    denominator = sum(numerator)
+    denominateur = sum(numerateur)
     
-    prob[i,] = numerator/denominator
+    prob[i,] = numerateur/denominateur
   }
   prob
   return( prob = prob)
@@ -51,8 +60,7 @@ Functio_prob<-function(beta0,lambda0,lambda2,Ts,event,XB, Q){
 #############
 ################ estimations ###################################
 #lambda0 ( baseline risk function)
-
-Function_lambda0<-function(prob,beta0,Ts,event,XB){
+Function_lambda0_Nd<-function(prob,beta0,Ts,event,XB){
   
   p = ncol(XB)
   n = length(Ts)
@@ -62,25 +70,23 @@ Function_lambda0<-function(prob,beta0,Ts,event,XB){
   
   som1 = prob%*%eXbeta0 # somme sur les j
   
- 
+  
   lambda0_1 = vector()
   
   for (i in 1:n) {
     
-    if(event[i] == 0){
-      
-      lambda0_1[i] = 0
-      
-    }else if(event[i] == 1 ){
+    if(event[i] == 0){lambda0_1[i] = 0
+    }else if(event[i] != 0 ){
       
       risq = GetRiskSet (Ts[i], Ts)
       nrisk = length(risq)
+      N_d = risk_nber(Ts[i], Ts)
       
       if(nrisk==1){
-        t2R = som1[risq]  # denominator
+        t2R = som1[risq] * N_d # denominator
       }else if(nrisk!=1){
         
-        t2R = sum( som1[risq] )
+        t2R = sum( som1[risq]* N_d )
       }
       
       lambda0_1[i] = (1/t2R)
@@ -92,7 +98,7 @@ Function_lambda0<-function(prob,beta0,Ts,event,XB){
 ######################
 #  estimating equation ########################
 
-equa_estimate <- function(beta,prob,Ts,event,XB) {
+equa_estimate_Nd <- function(beta,prob,Ts,event,XB) {
   
   p = ncol(XB)
   n = length(Ts)
@@ -126,19 +132,18 @@ equa_estimate <- function(beta,prob,Ts,event,XB) {
     nrisk = length(risk)
     
     if(nrisk==1){
-      denom = som1[risk] 
-      num = matrix(som2, ncol = p)[risk,] 
+      t2R = som1[risk] 
+      t3R = matrix(som2, ncol = p)[risk,] 
     }else if(nrisk!=1){
       
-      denom = sum( som1[risk] )
-      num = colSums(matrix(som2, ncol = p)[risk,] ) 
-      }
+      t2R = sum( som1[risk] )
+      t3R = colSums(matrix(som2, ncol = p)[risk,] ) }
     
-    s[i,] = (Z1R - num/denom)
+    s[i,] = (Z1R - t3R/t2R)
     
   }
   
-  s <- colSums(s) 
+  s <- colSums(s)
   
   return(s=s)
   
@@ -147,15 +152,15 @@ equa_estimate <- function(beta,prob,Ts,event,XB) {
 #####################
 # ###########solve the equation 
 
-coxph_estimate<- function(prob,Ts,event,XB,beta_ini,maxiter = 20){
+coxph_estimate_Nd<- function(prob,Ts,event,XB,beta_ini,maxiter = 20){
   
   f <- function(x){
-    equa_estimate  (beta= x,prob,Ts,event,XB)
+    equa_estimate_Nd  (beta= x,prob,Ts,event,XB)
   }
- # fit_manual <- nleqslv( c(beta_ini[1],beta_ini[2]),f, method = c("Broyden", "Newton"))
- # beta0 <- fit_manual$x
+  # fit_manual <- nleqslv( c(beta_ini[1],beta_ini[2]),f, method = c("Broyden", "Newton"))
+  # beta0 <- fit_manual$x
   #iterations <- fit_manual$iter
- # converge <- as.numeric(( iterations< maxiter)& (fit_manual$scalex==1) )
+  # converge <- as.numeric(( iterations< maxiter)& (fit_manual$scalex==1) )
   
   #xstart <- matrix(rnorm(20,0,1), ncol = 2)
   #Zero <-  searchZeros(xstart,f)
@@ -172,7 +177,7 @@ coxph_estimate<- function(prob,Ts,event,XB,beta_ini,maxiter = 20){
 
 #valeurs initials
 
-Func_itteration<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500){
+Func_itteration_Nd<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500){
   
   p = ncol(XB)
   n = length(Ts)
@@ -184,17 +189,17 @@ Func_itteration<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500){
     
     lambda0.old = lambda0
     beta0.old = beta0
-   
+    
     #expectation  
     
-    lambda2 = Funct_lambda2(lambda0.old,Ts,event)
+    lambda2 = Funct_lambda2_Nd(lambda0.old,Ts,event)
     
-    prob = Functio_prob(beta0.old,lambda0.old,lambda2,Ts,event,XB, Q)
+    prob = Functio_prob_Nd(beta0.old,lambda0.old,lambda2,Ts,event,XB, Q)
     
     
     #maximization
-    lambda0 = Function_lambda0 (prob,beta0.old,Ts,event,XB)
-    estime = coxph_estimate (prob,Ts,event,XB,beta_ini, maxiter = 20)
+    lambda0 = Function_lambda0_Nd (prob,beta0.old,Ts,event,XB)
+    estime = coxph_estimate_Nd (prob,Ts,event,XB,beta_ini, maxiter = 20)
     beta0 = estime$beta0
     beta_ini = beta0.old
     

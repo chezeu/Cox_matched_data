@@ -4,14 +4,16 @@
 ############### SCENARIOS
 
 C_sample = rbind(c(0.6,0.2,0.2),c(0.7,0.2,0.1),c(0.8,0.1,0.1))
-m_sample = c(100,500,800)
+m_sample = c(100,500,700)
 n_sample = round((80*m_sample)/100)
 p = 2
-nsim = 100 
+nsim = 10
+
 beta = c(0.5,-0.5)
 
 #lambda0 = rep(0.5,n)
 #beta0 = c(0.1,0.1) 
+#beta = c(0.5,-0.5) 
 
 ############## Table of scenarios
 

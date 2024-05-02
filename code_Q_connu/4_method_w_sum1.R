@@ -29,7 +29,7 @@ equa_W_sum1 <- function(beta,Ts,event,XB, Q) {
     ts = dat1[i, 1]
     Z1R = dat1[i,2:ncol(dat1)]
     
-    risk = GetRiskSet(ts, Ts, event)
+    risk = GetRiskSet(ts, Ts)
     nrisk = length(risk)
     if(nrisk==1){
       t2R = som1[risk] 
