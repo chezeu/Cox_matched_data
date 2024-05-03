@@ -7,8 +7,8 @@ setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
 
 source("7_scenarios.R")
 
-#scenarios_boxplot=scenarios[scenarios$m==100,] 
-scenarios_boxplot=scenarios[scenarios$m==500,] 
+scenarios_boxplot=scenarios[scenarios$m==100,] 
+#scenarios_boxplot=scenarios[scenarios$m==200,] 
 #scenarios_boxplot=scenarios[scenarios$m==700,] 
 
 varies = "Q"
@@ -120,9 +120,9 @@ setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
 
 source("7_scenarios.R")
 
-#scenarios_boxplot=scenarios[scenarios$Prob_1==0.6,] 
+scenarios_boxplot=scenarios[scenarios$Prob_1==0.6,] 
 #scenarios_boxplot=scenarios[scenarios$Prob_1==0.7,] 
-scenarios_boxplot=scenarios[scenarios$Prob_1==0.8,] 
+#scenarios_boxplot=scenarios[scenarios$Prob_1==1,] 
 
 varies="m"
 fixed = "Prob_1"

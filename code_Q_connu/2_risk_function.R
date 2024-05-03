@@ -8,14 +8,6 @@ GetRiskSet <- function(time_of_interest, time_vector) {
   
 }
 
-#####
-#position of times before time tilde_d
-
-observe <- function(time_of_interest, time_vector, event_vector) {
-  return(which( (time_vector <= time_of_interest) & (event_vector == 1) ))
-}
-####
-
 #number of risk at time tilde_d
 
 risk_nber <- function(time_of_interest, time_vector) {

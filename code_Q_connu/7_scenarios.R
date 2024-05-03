@@ -3,11 +3,11 @@
 
 ############### SCENARIOS
 
-C_sample = rbind(c(0.6,0.2,0.2),c(0.7,0.2,0.1),c(0.8,0.1,0.1))
-m_sample = c(100,500,700)
+C_sample = rbind(c(0.6,0.2,0.2),c(0.7,0.2,0.1),c(1,0,0))
+m_sample = c(100,200,300)
 n_sample = round((80*m_sample)/100)
 p = 2
-nsim = 10
+nsim = 20
 
 beta = c(0.5,-0.5)
 

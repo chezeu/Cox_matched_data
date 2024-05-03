@@ -1,7 +1,7 @@
 
 ########################################################
 # data generation of the bigger data base
-Generate_data <- function(m,n,beta){
+Generate_data <- function(m,n,beta,sigma,alpha){
   # set.seed(42)
   ##covarites data
   X1 = rnorm(m,0,1)
@@ -9,7 +9,7 @@ Generate_data <- function(m,n,beta){
   X  = as.matrix(cbind(X1, X2))
   
   U  = runif(m,0,1) # Time to event variable
-  Tt = -log(U)/exp((X%*%beta))#lambda=1
+  Tt = sigma* (-log(U)/exp((X%*%beta)))^(1/alpha) #lambda=1
   # Constant right censored
   #c = quantile(Tt[,1], probs = 0.75)
   c  = 1.777907

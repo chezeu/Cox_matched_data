@@ -213,7 +213,6 @@ Func_itteration_Nd<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 50
       cat("WARNING! beta0 NOT AVAILABLE!", "\n")
       converge = FALSE
     }
-    
     it = it + 1
     
   }
