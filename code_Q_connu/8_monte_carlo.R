@@ -18,7 +18,7 @@ source("7_scenarios.R")
 
 
 ################### nsim monte carlos
-estimates_survival<- function(nsim,n,m,C,p,beta,sigma,alpha){
+estimates_survival<- function(nsim,nA,nB,C,p,beta,sigma,alpha){
   
   
   coef_true_s = matrix(0,nrow = nsim, ncol = p)
@@ -39,21 +39,30 @@ estimates_survival<- function(nsim,n,m,C,p,beta,sigma,alpha){
   converge_estimate_Nd = vector()
   
   
+  
+  #C=c(0.8,0.1,0.1)
+  
+  Q = matrix(0, nA, nB)
+  for (j in 1:nA) {
+    vec = sample(1:nB, 3)
+    Q[j,vec] = C
+  }
+  
   for (i in 1:nsim){
     
     #data generation
-    surv_data = Generate_data(m,n,beta,sigma,alpha)
-    mf = Matrix_function(n,m,C,beta,surv_data)
-    data_true = mf$data_true
-    data_naive = mf$data_naive
-    
-    Ts = mf$data_true$Time
-    event = mf$data_true$delta
-    Q = mf$Q
+    mf = Generate_data(nB,nA,beta,Q)
+    surv_data = mf$surv_data
     XB = mf$XB
+    data_naive = mf$data_naive
+    data_true=surv_data
+    
+    Ts = data_true$Time
+    event = data_true$delta
+  
     Z = as.matrix(data_naive[,3:(p+2)]) 
 
-    lambda0 =  rep(0.01,length(event))
+    lambda0 =  rep(0.1,length(event))
     lambda0 [which(event == 0)] = 0
     beta0 = c(0.1,0.1)
 
@@ -81,12 +90,12 @@ estimates_survival<- function(nsim,n,m,C,p,beta,sigma,alpha){
     converge_w_sum2[i] = fit_w_sum2$converge
        
       # EM method
-    fit_estimate = Func_itteration(beta0,lambda0,Ts,event,XB,Q,tol= 1e-6,maxits = 500)
+    fit_estimate = Func_itteration(beta0,lambda0,Ts,event,XB,Q,tol= 1e-6,maxits = 100)
     coef_estimate_s[i,] = fit_estimate$beta0
     converge_estimate[i] = as.numeric(fit_estimate$converge)
     
     # EM with N_d
-    fit_estimate_Nd = Func_itteration_Nd(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6,maxits = 500)
+    fit_estimate_Nd = Func_itteration_Nd(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6,maxits = 100)
     coef_estimate_s_Nd[i,] = fit_estimate_Nd$beta0
     converge_estimate_Nd[i] = as.numeric(fit_estimate_Nd$converge)
     
@@ -107,20 +116,19 @@ estimates_survival<- function(nsim,n,m,C,p,beta,sigma,alpha){
 setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
 
 for (i in (1:nrow(scenarios))){
-  
   nsim=scenarios[i,1]
-  m=scenarios[i,2]
-  n=scenarios[i,3]
+  nB=scenarios[i,2]
+  nA=scenarios[i,3]
   C=vector()
   C[1]=scenarios[i,4]
   C[2]=scenarios[i,5]
   C[3]=scenarios[i,6]
-
+#gamma=scenarios[i,4]
   
-  results_sample = estimates_survival(nsim,n,m,C,p,beta,sigma,alpha) #monte carlos
+    results_sample = estimates_survival(nsim,nA,nB,C,p,beta,sigma,alpha) #monte carlos
   
   filename = paste0("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results/","nsim=",nsim,
-                    "_m=",m, "_prob1=", C[1], ".Rdata")
+                    "_nB=",nB, "_prob1=", C[1], ".Rdata")
   
   save(results_sample,file = filename)
   

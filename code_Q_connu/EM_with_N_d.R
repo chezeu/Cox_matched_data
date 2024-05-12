@@ -7,17 +7,16 @@ source("2_risk_function.R")
 ################### cumulative function
 
 Funct_lambda2_Nd<-function(lambda0,Ts,event){
-  #lambda0<- rep(0.1,length(event))
   
   n = length(Ts)
   
   lambda2 = vector()
   # vector N_d
   vec = NULL
-for(j in 1:n) {
-      N_d = risk_nber(Ts[j], Ts) 
-      vec = c(vec, N_d)
-    }
+  for(j in 1:n) {
+    N_d =n-risk_nber(Ts[j], Ts) +1
+    vec = c(vec, N_d)
+  }
   
   for (i in 1:n) {
     wi = observe_Nd(Ts[i], Ts)
@@ -68,7 +67,7 @@ Function_lambda0_Nd<-function(prob,beta0,Ts,event,XB){
   X = as.matrix(XB, ncol = p) # covariates
   eXbeta0 = exp(X%*% beta0)
   
-  som1 = prob%*%eXbeta0 # somme sur les j
+  som1 = prob%*%eXbeta0 # sum with j
   
   
   lambda0_1 = vector()
@@ -80,13 +79,12 @@ Function_lambda0_Nd<-function(prob,beta0,Ts,event,XB){
       
       risq = GetRiskSet (Ts[i], Ts)
       nrisk = length(risq)
-      N_d = risk_nber(Ts[i], Ts)
-      
+     
       if(nrisk==1){
-        t2R = som1[risq] * N_d # denominator
+        t2R = som1[risq] # denominator
       }else if(nrisk!=1){
         
-        t2R = sum( som1[risq]* N_d )
+        t2R = sum( som1[risq] )
       }
       
       lambda0_1[i] = (1/t2R)
@@ -122,28 +120,27 @@ equa_estimate_Nd <- function(beta,prob,Ts,event,XB) {
   dat1 = cbind(Ts, Z)[which(event==1),]
   
   ## Estimating equation
-  s = matrix(0,nrow=nrow(dat1), ncol = p)
+  s = 0
   
-  for (i in 1:nrow(dat1)) {
-    ts = dat1[i, 1]
-    Z1R = dat1[i,2:ncol(dat1)]
+  for (i in 1:n) {
     
-    risk = GetRiskSet(ts, Ts)
+    risk = GetRiskSet(Ts[i], Ts)
     nrisk = length(risk)
     
     if(nrisk==1){
       t2R = som1[risk] 
-      t3R = matrix(som2, ncol = p)[risk,] 
+      t3R = som2[risk,] 
     }else if(nrisk!=1){
       
       t2R = sum( som1[risk] )
-      t3R = colSums(matrix(som2, ncol = p)[risk,] ) }
+      t3R = colSums(som2[risk,] ) 
+      }
     
-    s[i,] = (Z1R - t3R/t2R)
+    s = s + event[i]* (Z[i,]  - t3R/t2R)
     
   }
   
-  s <- colSums(s)
+  s
   
   return(s=s)
   
@@ -177,7 +174,7 @@ coxph_estimate_Nd<- function(prob,Ts,event,XB,beta_ini,maxiter = 20){
 
 #valeurs initials
 
-Func_itteration_Nd<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500){
+Func_itteration_Nd<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 100){
   
   p = ncol(XB)
   n = length(Ts)
@@ -205,13 +202,10 @@ Func_itteration_Nd<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 50
     
     converge = sqrt (sum ((beta0.old -beta0))^2 + sum ( (lambda0.old - lambda0)^2 ) ) < tol  
     
-    
     if (it == maxits) {
       cat("WARNING! NOT CONVERGENT!", "\n")
-      converge = FALSE
     }else if(is.na(beta0[1]) & is.na(beta0[2])){
       cat("WARNING! beta0 NOT AVAILABLE!", "\n")
-      converge = FALSE
     }
     it = it + 1
     

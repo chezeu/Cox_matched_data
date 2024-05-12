@@ -191,10 +191,3 @@ Func_itteration<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 500){
 }
 
 
-
-
-death_times= sort(unique(Ts*event))
-death_times=death_times[death_times!=0]
-
-
-

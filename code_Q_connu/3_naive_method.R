@@ -1,7 +1,6 @@
 
 #########  multinomiale Q
-
-setwd( "C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
 source("2_risk_function.R")
 #################
 # equation naive
@@ -15,11 +14,9 @@ equa_naive <- function(beta,Ts,event, Z) {
   
   s = 0
   for(i in 1:n){ 
-    
-    #Yi<- as.numeric( Ts >= Ts[i])# at risk
-    Yi = as.numeric( (Ts == Ts[i] ) | (Ts > Ts[i]))# at risk
-    risq = which(Yi==1)
-    
+  # at risk
+   # Yi = as.numeric( (Ts == Ts[i] ) | (Ts > Ts[i]))# at risk
+    risq = which(( Ts >= Ts[i]))
     if(length(risq)==1){
       
       num_naive = zezbeta[risq,]
@@ -51,7 +48,10 @@ coxph_equa_naive <- function(Ts,event, Z, maxiter = 20){
   beta = fit_manual$root
   iterations = fit_manual$iter
   converge = as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
-  
+  if (iterations  == maxiter) {
+    cat("WARNING! NOT CONVERGENT FOR NAIVE_NEWTON!", "\n")
+    converge = FALSE
+  }
   return(list(coef = beta, converge = converge, iterations = iterations))
 }
 #################
