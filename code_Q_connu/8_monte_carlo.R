@@ -38,13 +38,24 @@ estimates_survival<- function(nsim,nA,nB,C,p,beta,sigma,alpha){
   coef_estimate_s_Nd = matrix(0,nrow = nsim, ncol = p)
   converge_estimate_Nd = vector()
   
-  
+  #Q = matrix(0,nA,nB)
+  #for (i in 1:nA) {
+   # Q[i,i] = C[1]
+  #  if(i!=1 & i!=nA){ 
+   #   Q[i,i+1] = C[2]
+    #  Q[i,i-1] = C[3]
+  #  }else if(i==1)  {
+   #   Q[i,i+1] = C[2]
+    #  Q[i,i+2] = C[3]
+    #}else if(i==nA){ 
+    #  Q[i,i-1] = C[2]
+     # Q[i,i-2] = C[3]}}
   
   #C=c(0.8,0.1,0.1)
   
   Q = matrix(0, nA, nB)
   for (j in 1:nA) {
-    vec = sample(1:nB, 3)
+   vec = sample(1:nB, 3)
     Q[j,vec] = C
   }
   
@@ -60,11 +71,11 @@ estimates_survival<- function(nsim,nA,nB,C,p,beta,sigma,alpha){
     Ts = data_true$Time
     event = data_true$delta
   
-    Z = as.matrix(data_naive[,3:(p+2)]) 
+    Z = as.matrix(data_naive[,-c(1,2)]) 
 
     lambda0 =  rep(0.1,length(event))
     lambda0 [which(event == 0)] = 0
-    beta0 = c(0.1,0.1)
+    beta0 = rep(0.1,p)
 
     # times of event
    # death_times= Ts[which(event==1)]
@@ -128,7 +139,7 @@ for (i in (1:nrow(scenarios))){
     results_sample = estimates_survival(nsim,nA,nB,C,p,beta,sigma,alpha) #monte carlos
   
   filename = paste0("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results/","nsim=",nsim,
-                    "_nB=",nB, "_prob1=", C[1], ".Rdata")
+                    "_nA=",nA, "_prob1=", C[1], ".Rdata")
   
   save(results_sample,file = filename)
   

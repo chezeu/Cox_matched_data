@@ -18,7 +18,7 @@ Funct_lambda2<-function(lambda0,Ts){
 ### proba aposteriories (pi)
 
 Functio_prob<-function(beta0,lambda2,Ts,event,XB, Q){
-  
+  p=ncol(XB)
   X = as.matrix(XB, ncol = p) # covariates
   
   eXbeta0 = exp(X%*% beta0)
@@ -146,7 +146,7 @@ coxph_estimate<- function(prob,Ts,event,XB,beta_ini,maxiter = 20){
   
   #xstart <- matrix(rnorm(20,0,1), ncol = 2)
   #Zero <-  searchZeros(xstart,f)
-  fit_manual = multiroot(f,start = c(beta_ini[1],beta_ini[2]), maxiter = maxiter)
+  fit_manual = multiroot(f,start = beta_ini, maxiter = maxiter)
   beta0 = fit_manual$root
   iterations =  fit_manual$iter
   converge = as.numeric((fit_manual$iter < maxiter)& !is.nan(fit_manual$estim.precis) & !is.na(fit_manual$estim.precis) & (fit_manual$estim.precis<1e-6))
@@ -162,7 +162,7 @@ coxph_estimate<- function(prob,Ts,event,XB,beta_ini,maxiter = 20){
 
 #valeurs initials
 
-Func_itteration<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-8, maxits = 100){
+Func_itteration<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-6, maxits = 100){
   
   p = ncol(XB)
   n = length(Ts)
@@ -194,7 +194,7 @@ Func_itteration<-function(beta0,lambda0,Ts,event,XB, Q,tol= 1e-8, maxits = 100){
     if (it == maxits) {
       cat("WARNING! NOT CONVERGENT WITH EM!", "\n")
       converge = FALSE
-    }else if(is.na(beta0[1]) | is.na(beta0[2])){
+    }else if(is.na(beta0[1]) | is.na(beta0[2])| is.na(beta0[3])| is.na(beta0[4])){
       cat("WARNING! beta0 NOT AVAILABLE!", "\n")
       converge = FALSE
     }

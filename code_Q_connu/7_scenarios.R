@@ -4,15 +4,15 @@
 ############### SCENARIOS
 
 C_sample = rbind(c(0.6,0.2,0.2),c(0.7,0.2,0.1),c(1,0,0))
-n_sample = c(100,500,900)
+n_sample = c(100,500,1500)
 n0_sample = round((20*n_sample)/100)
 m_sample = n0_sample + n_sample
-p = 2
-nsim =100
+p = 4
+nsim =1000
 #gamma_sample=c(0.6,0.7, 0.8)
 sigma=1
 alpha=1 # alpha != 1 
-beta = c(0.5,-0.5)
+beta = c(0.5,-0.5,-0.75,1)
 
 #lambda0 = rep(0.5,n)
 #beta0 = c(0.1,0.1) 

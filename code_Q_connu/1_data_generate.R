@@ -26,7 +26,7 @@ Generate_data <- function(nB,nA,beta,Q){
   Time      = pmin(Tt,c) # le vrai temps
   delta     = as.numeric(Tt<=c)
   surv_data = data.frame(Time,delta,X_true) # ou bien Z
-  colnames(surv_data) = c('Time','delta',paste("X", 1:2, sep = ""))
+  colnames(surv_data) = c('Time','delta',paste("X", 1:p, sep = ""))
   
   L_naive =sapply(1:nA, FUN= function(i){  which.max(Q[i,])
     })  

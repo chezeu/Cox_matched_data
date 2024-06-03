@@ -7,12 +7,12 @@ setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
 
 source("7_scenarios.R")
 
-scenarios_boxplot=scenarios[scenarios$nB==1080,] 
-#scenarios_boxplot=scenarios[scenarios$nB==200,] 
-#scenarios_boxplot=scenarios[scenarios$nB==700,] 
+#scenarios_boxplot=scenarios[scenarios$nA==100,] 
+#scenarios_boxplot=scenarios[scenarios$nA==500,] 
+scenarios_boxplot=scenarios[scenarios$nA==1500,] 
 
 varies = "Q"
-fixed = "nB"
+fixed = "nA"
 
 library(ggplot2)
 library(gridExtra)
@@ -34,36 +34,36 @@ for (i in (1:nrow(scenarios_boxplot ))){
   Prob_sample = paste0("(",Prob1,",",Prob2,",",Prob3,")") 
   
   load(paste0("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results/",
-              "nsim=",nsim,"_nB=",nB, "_prob1=", Prob1, ".Rdata"))
+              "nsim=",nsim,"_nA=",nA, "_prob1=", Prob1, ".Rdata"))
   results_sample = results_sample
   
   
   boxplot_beta0_true = cbind(rep(1,times=nsim),
-                             rep(nB,times=nsim),
+                             rep(nA,times=nsim),
                              rep(  Prob_sample , times=nsim ),
                              results_sample$coef_true_s1,
                              results_sample$coef_true_s2)
   
   boxplot_beta0_naive = cbind(rep(2,times=nsim),
-                              rep(nB,times=nsim),
+                              rep(nA,times=nsim),
                               rep(  Prob_sample , times=nsim ),
                               results_sample$coef_naive_s1,
                               results_sample$coef_naive_s2)
   
   boxplot_beta0_w_sum1 = cbind(rep(3,times=nsim),
-                               rep(nB,times=nsim),
+                               rep(nA,times=nsim),
                                rep(  Prob_sample , times=nsim ),
                                results_sample$coef_w_sum1_s1,
                                results_sample$coef_w_sum1_s2)
   
   boxplot_beta0_w_sum2 = cbind(rep(4,times=nsim),
-                               rep(nB,times=nsim),
+                               rep(nA,times=nsim),
                                rep(  Prob_sample , times=nsim ),
                                results_sample$coef_w_sum2_s1,
                                results_sample$coef_w_sum2_s2)
   
   boxplot_beta0_estimate = cbind(rep(5,times=nsim),
-                                 rep(nB,times=nsim),
+                                 rep(nA,times=nsim),
                                  rep(  Prob_sample , times=nsim ),
                                  results_sample$coef_estimate_s1,
                                  results_sample$coef_estimate_s2)
@@ -92,14 +92,14 @@ beta0_1 = ggplot(boxplot_beta0,aes(x=Q,y= beta0.1,fill=Estimator))+
   geom_boxplot()+
   xlab(varies)+
   ylab(quote(hat(beta)[1]))+
-  geom_hline(yintercept=0.5,lty=1,col="orange")+
+  geom_hline(yintercept=beta[1],lty=1,col="orange")+
   ggtitle(titlename)
 beta0_1
 beta0_2 = ggplot(boxplot_beta0,aes(x=Q,y= beta0.2,fill=Estimator))+
   geom_boxplot()+
   xlab(varies)+
   ylab(quote(hat(beta)[2]))+
-  geom_hline(yintercept=-0.5,lty=1,col="orange")+
+  geom_hline(yintercept=beta[2],lty=1,col="orange")+
   ggtitle(titlename)
 beta0_2
 
@@ -118,7 +118,7 @@ source("7_scenarios.R")
 scenarios_boxplot=scenarios[scenarios$Prob_1==0.7,] 
 #scenarios_boxplot=scenarios[scenarios$Prob_1==1,] 
 
-varies="nB"
+varies="nA"
 fixed = "Prob_1"
 
 library(ggplot2)
@@ -138,36 +138,36 @@ for (i in (1:nrow(scenarios_boxplot ))){
   Prob_sample = paste0("(",Prob1,",",Prob2,",",Prob3,")") 
   
   load(paste0("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu/Results/",
-              "nsim=",nsim,"_nB=",nB, "_prob1=", Prob1, ".Rdata"))
+              "nsim=",nsim,"_nA=",nA, "_prob1=", Prob1, ".Rdata"))
   results_sample = results_sample
   
   
   boxplot_beta0_true = cbind(rep(1,times=nsim),
-                             rep(nB,times=nsim),
+                             rep(nA,times=nsim),
                              rep(  Prob_sample , times=nsim ),
                              results_sample$coef_true_s1,
                              results_sample$coef_true_s2)
   
   boxplot_beta0_naive = cbind(rep(2,times=nsim),
-                              rep(nB,times=nsim),
+                              rep(nA,times=nsim),
                               rep(  Prob_sample , times=nsim ),
                               results_sample$coef_naive_s1,
                               results_sample$coef_naive_s2)
   
   boxplot_beta0_w_sum1 = cbind(rep(3,times=nsim),
-                               rep(nB,times=nsim),
+                               rep(nA,times=nsim),
                                rep(  Prob_sample , times=nsim ),
                                results_sample$coef_w_sum1_s1,
                                results_sample$coef_w_sum1_s2)
   
   boxplot_beta0_w_sum2 = cbind(rep(4,times=nsim),
-                               rep(nB,times=nsim),
+                               rep(nA,times=nsim),
                                rep(  Prob_sample , times=nsim ),
                                results_sample$coef_w_sum2_s1,
                                results_sample$coef_w_sum2_s2)
   
   boxplot_beta0_estimate = cbind(rep(5,times=nsim),
-                                 rep(nB,times=nsim),
+                                 rep(nA,times=nsim),
                                  rep(  Prob_sample , times=nsim ),
                                  results_sample$coef_estimate_s1,
                                  results_sample$coef_estimate_s2)
@@ -190,22 +190,23 @@ boxplot_beta0[,1] = factor(boxplot_beta0[,1],
 
 boxplot_beta0[,4] = as.numeric(boxplot_beta0[,4] )
 boxplot_beta0[,5] = as.numeric(boxplot_beta0[,5] )
-
+order=unique(boxplot_beta0[,2])
 # Boxplots for beta0
 
-beta0_1 = ggplot(boxplot_beta0,aes(x=nB,y= beta0.1,fill=Estimator))+
+beta0_1 = ggplot(boxplot_beta0,aes(x=nA,y= beta0.1,fill=Estimator))+
   geom_boxplot()+
-  xlab(varies)+
+  xlab(quote(n[A]))+
   ylab(quote(hat(beta)[1]))+
-  geom_hline(yintercept=0.5,lty=1,col="orange")+
+  geom_hline(yintercept=beta[1],lty=1,col="orange")+
   ggtitle(titlename)
-beta0_1
-beta0_2 = ggplot(boxplot_beta0,aes(x=nB,y= beta0.2,fill=Estimator))+
+beta0_1 + scale_x_discrete(limits=c(order[1],order[2],order[3]))
+
+beta0_2 = ggplot(boxplot_beta0,aes(x=nA,y= beta0.2,fill=Estimator))+
   geom_boxplot()+
-  xlab(varies)+
+  xlab(quote(n[A]))+
   ylab(quote(hat(beta)[2]))+
-  geom_hline(yintercept=-0.5,lty=1,col="orange")+
+  geom_hline(yintercept=beta[2],lty=1,col="orange")+
   ggtitle(titlename)
-beta0_2
+beta0_2+ scale_x_discrete(limits=c(order[1],order[2],order[3]))
 #####################################
 
