@@ -103,11 +103,23 @@ beta0_2 = ggplot(boxplot_beta0,aes(x=Q,y= beta0.2,fill=Estimator))+
   ggtitle(titlename)
 beta0_2
 
+# histogram
 
-######################## ####################
+
+data_histogram = boxplot_beta0[which(boxplot_beta0$Estimator==unique(boxplot_beta0$Estimator)[5]),]
+Q_hist = unique(data_histogram$Q)
+
+for (i in 1:length(Q_hist)) {
+  q= Q_hist[i]
+  beta_hist =data_histogram[which(data_histogram$Q==q),]
+  hist(beta_hist$beta0.1, xlab= quote(hat(beta)[1]),main = paste("nA =",unique( beta_hist$nA),",","Q=",unique( beta_hist$Q)))
+  hist(beta_hist$beta0.2, xlab= quote(hat(beta)[2]),main = paste("nA =",unique( beta_hist$nA),",","Q=",unique( beta_hist$Q)))
+}
+
+################## ####################
 
 ##############     Q fixed and m varies            ######
-### boxplots
+### boxplots,main = paste("nA =", n,",","prob=",unique(data_histogram$Prob_1)))
 
 
 setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
@@ -209,4 +221,15 @@ beta0_2 = ggplot(boxplot_beta0,aes(x=nA,y= beta0.2,fill=Estimator))+
   ggtitle(titlename)
 beta0_2+ scale_x_discrete(limits=c(order[1],order[2],order[3]))
 #####################################
+### Histogram
 
+
+data_histogram = boxplot_beta0[which(boxplot_beta0$Estimator==unique(boxplot_beta0$Estimator)[5]),]
+nA_hist = unique(data_histogram$nA)
+
+for (i in 1:length(nA_hist)) {
+  n = nA_hist[i]
+  beta_hist =data_histogram[which(data_histogram$nA==n),]
+  hist(beta_hist$beta0.1, xlab= quote(hat(beta)[1]),main = paste("nA =", n,",","prob=",unique(data_histogram$Prob_1)))
+  hist(beta_hist$beta0.2, xlab= quote(hat(beta)[2]),main = paste("nA =", n,",","prob=",unique(data_histogram$Prob_1)))
+}

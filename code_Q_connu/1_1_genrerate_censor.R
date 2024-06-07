@@ -6,13 +6,13 @@ censor = NULL
 for (i in 1:100000) {
   ##covarites data
   n=1000
-  beta = c(0.5,-0.5, -0.75, 1)
+  beta = c(0.5,-0.5, 1)
   
   X1 = rnorm(n,0,1)
   X2 = rbinom(n,size = 1, prob = 0.7)
-  X3 = runif(n,0,1)
+ # X3 = runif(n,0,1)
   X4 = rnorm(n,0,2)
-  X  = as.matrix(cbind(X1, X2, X3, X4)) 
+  X  = as.matrix(cbind(X1, X2, X3)) 
   
   U  = runif(n,0,1) # Time to event variable
   Tt = sigma*(-log(U)/exp((X%*%beta)))^(1/alpha) #lambda=1
