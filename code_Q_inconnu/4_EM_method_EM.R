@@ -1,6 +1,6 @@
 
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_inconnu")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/code_Q_inconnu")
 source("2_EM_risk_function.R")
 ################### cumulative function
 

@@ -1,4 +1,4 @@
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/code_Q_connu")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/code_Q_connu")
 source("2_risk_function.R")
 
 ################# estimating equation of the weighted average equation 

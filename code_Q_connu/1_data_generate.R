@@ -7,7 +7,7 @@
 
 Generate_data <- function(nB,nA,beta,Q){
   ##covarites data
-  p=2
+  p=3
   X1 = rnorm(nB,0,1)
   X2 = rbinom(nB,size = 1, prob = 0.7)
   X3 = rnorm(nB,0,2)
