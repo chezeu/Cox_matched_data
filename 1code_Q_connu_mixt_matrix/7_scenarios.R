@@ -6,7 +6,7 @@
 nA_sample = c(100,500,1000) # must be highest than 30
 nB_sample = 2*nA_sample
 p = 3
-nsim =50
+nsim =500
 beta = c(0.5,-0.5,1)
 
 #(1.610541 3.039472 6.341335) for nA=100 (no difference with nA=1000) 
@@ -56,8 +56,8 @@ for (i in 1:length(nA_sample)){
 colnames(scenarios) = c("nsim","nB","nA","alpha","censor","v_matrix")
 addition = rbind(c(nsim,nB_sample[3], nA_sample[3] ,alpha_p[2], censor_sample[1],v_matrix[1]),
                   c(nsim,nB_sample[3], nA_sample[3] ,alpha_p[2], censor_sample[3],v_matrix[1]),
-                 c(nsim,nB_sample[1], nA_sample[1] ,alpha_p[2], censor_sample[2],v_matrix[2]),
-                 c(nsim,nB_sample[1], nA_sample[1] ,alpha_p[2], censor_sample[2],v_matrix[3]))
+                 c(nsim,nB_sample[3], nA_sample[3] ,alpha_p[2], censor_sample[2],v_matrix[2]),
+                 c(nsim,nB_sample[3], nA_sample[3] ,alpha_p[2], censor_sample[2],v_matrix[3]))
 scenarios=rbind(scenarios,addition)
 scenarios=data.frame(scenarios)
 
