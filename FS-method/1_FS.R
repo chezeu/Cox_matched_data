@@ -5,7 +5,7 @@
 
 linkage_function<- function(datasetA,datasetB,var_block,matching_variables){
   
-  # pairs with blocking variable
+  # pairs with same blocking variable
   p <- pair_blocking (datasetA, datasetB,var_block , FALSE)
   #p <- print(p)
   
@@ -16,7 +16,7 @@ linkage_function<- function(datasetA,datasetB,var_block,matching_variables){
   #p <- print(p)
   
   ## classification
-  p0 = 1/nrow(datasetB)
+  p0 = 1/nrow(datasetB) # probability that a pair is a match
   
   model <- problink_em ( ~ fname_c1+fname_c2 +lname_c1 +lname_c2 +by +bm+bd , data=p,
                          mprobs0 = list(0.9),uprobs0 = list(0.02),p0 = p0 ,tol = 1e-05,

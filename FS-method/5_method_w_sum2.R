@@ -26,16 +26,18 @@ equa_W_sum2 <- function(beta,Ts,event,XB, Q) {
     i2 = which(qi == max(qi))
     if(length(i2)!= 1){i2 = i2[1]}
     qi[i1] = l1
+    #normalize the probabilities
+    p = qi[i1]+qi[i2]
     
-    qix = (qi*X)[c(i1,i2),]
+    qix = ( (qi/p)*X)[c(i1,i2),]
     Z[i,] = colSums(qix)
     
     #### les sommes q*exp(beta x) pour tilfe_f   
-    qixbeta = (qi*eXbeta)[c(i1,i2),]
+    qixbeta = ((qi/p)*eXbeta)[c(i1,i2),]
     som1[i] = sum( qixbeta)
     
     ###  les sommes pour tilde_g   
-    qiXeXbeta = (qi*XeXbeta)[c(i1,i2),]
+    qiXeXbeta = ((qi/p)*XeXbeta)[c(i1,i2),]
     som2[i,] = colSums(qiXeXbeta)
   }  
   

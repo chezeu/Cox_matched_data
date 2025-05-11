@@ -3,8 +3,6 @@
 
 library(RecordLinkage)
 library(reclin2)
-#library(plyr)
-#library(dplyr)
 
 data("RLdata500")
 #data("RLdata10000")
