@@ -1,6 +1,6 @@
 
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/1code_Q_connu_mixt_matrix")
+#setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/1code_Q_connu_mixt_matrix")
 source("2_risk_function.R")
 ################### cumulative function
 

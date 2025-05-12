@@ -4,7 +4,7 @@ library(rootSolve)
 library(nleqslv)
 
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/1code_Q_connu_mixt_matrix")
+#setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/1code_Q_connu_mixt_matrix")
 source("1_data_generate.R")
 source("2_risk_function.R")
 source("3_naive_method.R")
@@ -180,7 +180,7 @@ if(v_matrix==6){
               converge_w_sum2 = converge_w_sum2, converge_Q_sum= converge_Q_sum,converge_estimate = converge_estimate ))  } 
 ######################################
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/1code_Q_connu_mixt_matrix")
+#setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/1code_Q_connu_mixt_matrix")
 
 for (i in c(2,12,13)){
   nsim=scenarios[i,1]
@@ -192,7 +192,7 @@ for (i in c(2,12,13)){
   
   results_sample = estimates_survival(nsim,nA,nB,p,beta,alpha,censor) #monte carlos
   
-  filename = paste0("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/1code_Q_connu_mixt_matrix/Results/","nsim=",nsim,
+  filename = paste0("Results/","nsim=",nsim,
                     "_nA=",nA,"_nB=",nB,"_alpha=",alpha,"_censor=",censor,"_v_matrix=",v_matrix,".Rdata")
   
   save(results_sample,file = filename)
