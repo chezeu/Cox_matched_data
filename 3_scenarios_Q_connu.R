@@ -6,7 +6,7 @@
 nA_sample = c(100,500,1000) # must be highest than 30
 nB_sample = 2*nA_sample
 p = 3
-nsim =5
+nsim =500
 beta = c(0.5,-0.5,1)
 
 #(1.610541 3.039472 6.341335) for nA=100 (no difference with nA=1000) 

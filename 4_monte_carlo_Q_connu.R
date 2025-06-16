@@ -129,7 +129,7 @@ estimates_survival<- function(nsim,nA,nB,p,beta,alpha,censor){
 #<<<<<<< HEAD:data_generation/4_monte_carlo_Q_connu.R
 #setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results/Results_Q_connu")
 
-for (i in c(8,12,13)){
+for (i in nrow(scenarios)){
   nsim=scenarios[i,1]
   nB=scenarios[i,2]
   nA=scenarios[i,3]
