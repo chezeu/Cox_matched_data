@@ -6,13 +6,13 @@
 nA_sample = c(100,500,1000) # must be highest than 30
 nB_sample = 2*nA_sample
 p = 3
-nsim =500
+nsim =5
 beta = c(0.5,-0.5,1)
 
 #(1.610541 3.039472 6.341335) for nA=100 (no difference with nA=1000) 
 
 censor_sample=c(1.553309,2.948469,6.392605)# for 40%,30%,20%
-v_matrix=c(3,6,9)
+v_matrix=c(3,6,9) # number of possible matches
 
 ##################### New scenario #####################
 

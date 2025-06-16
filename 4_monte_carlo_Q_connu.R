@@ -12,6 +12,7 @@ library(nleqslv)
 #source("1_data_generate.R")
 #>>>>>>> 922e6eaaa004785b5cc57bed7316b52f23825eef:1code_Q_connu_mixt_matrix/8_monte_carlo.R
 source("2_risk_function.R")
+source("2_matrice_Q_connu.R")
 source("3_naive_method.R")
 source("4_method_w_sum1.R")
 source("5_method_w_sum2.R")
@@ -44,13 +45,16 @@ estimates_survival<- function(nsim,nA,nB,p,beta,alpha,censor){
   converge_Q_sum = vector()
   
   # matrix 
+  
+  Q= genere_matrix (nA,nB,alpha)
+  
 #  Q = matrix(0, nA, nB)
   
  # t1= round((alpha*nA)) #individuals with (1,0,0)
 #  t2= nA - t1 #individuals with (0.6,0.2,0.2)
- # for (i in 1:t1) {
+# for (i in 1:t1) {
 #    vec = sample(1:nB, 3)
- #   Q[i,vec] = c(1,0,0)
+#    Q[i,vec] = c(1,0,0)
 #  }
  # if(t1!=nA){ 
 #  for (i in (t1+1):nA ){
@@ -59,55 +63,6 @@ estimates_survival<- function(nsim,nA,nB,p,beta,alpha,censor){
 #  }
 #  }
   
- # matrix with variation of the number of possible match
-  Q = matrix(0, nA, nB)
-  
-  t1= round((alpha*nA)) #individuals with (1,0,0,0)
-  t2= nA - t1 #individuals with different possible matche
-  v1= c(0.6,0.2,0.2) # 3 possible matches
-  v2= c(0.3,0.2,0.2,rep(0.1,3)) # 6 possible matches
-  v3= c(0.2,rep(0.1, 8)) # 9 possible matches
- 
-  nbre= c(3,6,9)
-  
-if(v_matrix==nbre[1]){ 
-  for (i in 1:t1) {
-    vec = sample(1:nB, nbre[1])
-    Q[i,vec] = c(1,rep(0,(nbre[1]-1)))
-  }
-  if(t1!=nA){ 
-    for (i in (t1+1):nA ){
-      vec = sample(1:nB, nbre[1])
-      Q[i,vec] = v1
-    }
-  }
-}
-  
-if(v_matrix== nbre[2]){ 
-    for (i in 1:t1) {
-      vec = sample(1:nB, nbre[2])
-      Q[i,vec] = c(1,rep(0,(nbre[2]-1)))
-    }
-    if(t1!=nA){ 
-      for (i in (t1+1):nA ){
-        vec = sample(1:nB, nbre[2])
-        Q[i,vec] = v2
-      }
-    }
-  }
-  
-  if(v_matrix==nbre[3]){ 
-    for (i in 1:t1) {
-      vec = sample(1:nB, nbre[3])
-      Q[i,vec] = c(1,rep(0,(nbre[3]-1)))
-    }
-    if(t1!=nA){ 
-      for (i in (t1+1):nA ){
-        vec = sample(1:nB, nbre[3])
-        Q[i,vec] = v3
-      }
-    }
-  }
 #############################  ##
  
   for (i in 1:nsim){
@@ -173,12 +128,8 @@ if(v_matrix== nbre[2]){
 ######################################
 #<<<<<<< HEAD:data_generation/4_monte_carlo_Q_connu.R
 #setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results/Results_Q_connu")
-#=======
 
-#setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/1code_Q_connu_mixt_matrix")
-
-#>>>>>>> 922e6eaaa004785b5cc57bed7316b52f23825eef:1code_Q_connu_mixt_matrix/8_monte_carlo.R
-for (i in c(2,12,13)){
+for (i in c(8,12,13)){
   nsim=scenarios[i,1]
   nB=scenarios[i,2]
   nA=scenarios[i,3]
@@ -188,8 +139,7 @@ for (i in c(2,12,13)){
   
   results_sample = estimates_survival(nsim,nA,nB,p,beta,alpha,censor) #monte carlos
   
-#<<<<<<< HEAD:data_generation/4_monte_carlo_Q_connu.R
-  filename = paste0("Results/Results_Q_connu/","nsim=",nsim,
+  filename = paste0("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results/Results_Q_connu/","nsim=",nsim,
                     "_nA=",nA,"_nB=",nB,"_alpha=",alpha,"_censor=",censor,"_v_matrix=",v_matrix,".Rdata")
   
   save(results_sample,file = filename)
