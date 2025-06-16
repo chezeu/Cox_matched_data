@@ -1,6 +1,6 @@
 
 #######  alpha varied #########################
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/data_generation")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Methods")
 
 source("3_scenarios_Q_connu.R")
 #scenarios_boxplot=scenarios[scenarios$nA==100,] 
@@ -89,7 +89,7 @@ colnames(boxplot_beta0) = c("Estimator",fixed,varies,"beta0.1","beta0.2","beta0.
 boxplot_beta0 = data.frame(boxplot_beta0)
 
 boxplot_beta0[,1] = factor(boxplot_beta0[,1],
-                           levels = 1:6,labels = c("Theorical"," Naive", "weighted average", "2-max weighted average","Q_weighted average", "EM"))
+                           levels = 1:6,labels = c("Theorical"," Naive", "weighted average", "Max weighted average","P_weighted average", "EM"))
 boxplot_beta0[,2] = factor(boxplot_beta0[,2] )
 boxplot_beta0[,3] = factor(boxplot_beta0[,3] )
 
@@ -134,7 +134,7 @@ beta0_3_alpha = ggplot(boxplot_beta0,aes(x=alpha,y= beta0.3,fill=Estimator))+
 
 ##############     alpha fixed and nA varies ######
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/data_generation")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Methods")
 
 source("3_scenarios_Q_connu.R")
 #scenarios_boxplot=scenarios[scenarios$alpha==0.8,] 
@@ -219,7 +219,7 @@ colnames(boxplot_beta0) = c("Estimator",fixed,varies, "beta0.1","beta0.2","beta0
 boxplot_beta0 = data.frame(boxplot_beta0)
 
 boxplot_beta0[,1] = factor(boxplot_beta0[,1],
-       levels = 1:6,labels = c("Theorical", "Naive", "weighted average", "2-max weighted average","Q_weighted average", "EM"))
+       levels = 1:6,labels = c("Theorical", "Naive", "weighted average", "Max weighted average","P_weighted average", "EM"))
 boxplot_beta0[,3] = factor(boxplot_beta0[,3] )
 boxplot_beta0[,4] = as.numeric(boxplot_beta0[,4] )
 boxplot_beta0[,5] = as.numeric(boxplot_beta0[,5] )
@@ -266,13 +266,16 @@ beta0_3_nA = ggplot(boxplot_beta0,aes(x=nA,y= beta0.3,fill=Estimator))+
 ##############    nA fixed and censor varies ######
 
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/data_generation")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Methods")
 
 source("3_scenarios_Q_connu.R")
 #scenarios_boxplot=scenarios[scenarios$alpha==0.8,] 
 scenarios_boxplot = scenarios[(scenarios$alpha==0.9& scenarios$v_matrix==3) &
                                (scenarios$nA==1000),] 
-
+# order 
+scenarios_boxplot= rbind(scenarios_boxplot[3,],
+                         scenarios_boxplot[1,],
+                         scenarios_boxplot[2,])
 #scenarios_boxplot=scenarios[scenarios$alpha==1,] 
 
 fixed= "nA"
@@ -284,7 +287,7 @@ library(ggpubr)
 
 setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results")
 boxplot_beta0 = NULL
-Censor_sample = c(30,40,20) # percentage of censor: see in scenario
+Censor_sample = c(20,30,40) # percentage of censor: see in scenario
 # size fix
 for (i in (1:nrow(scenarios_boxplot))){
   
@@ -295,7 +298,7 @@ for (i in (1:nrow(scenarios_boxplot))){
   censor=scenarios_boxplot[i,5]
   
   load(paste0("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results/Results_Q_connu/","nsim=",nsim,
-              "_nA=",nA,"_nB=",nB,"_alpha=",alpha,"_censor=",censor,".Rdata"))
+              "_nA=",nA,"_alpha=",alpha,"_censor=",censor,".Rdata"))
   results_sample = results_sample
   #size= paste0("alpha=", nA)
   
@@ -353,7 +356,7 @@ colnames(boxplot_beta0) = c("Estimator",varies,fixed, "beta0.1","beta0.2","beta0
 boxplot_beta0 = data.frame(boxplot_beta0)
 
 boxplot_beta0[,1] = factor(boxplot_beta0[,1],
-                           levels = 1:6,labels = c("Theorical", "Naive", "weighted average", "2-max weighted average", "Q_weighted average", "EM"))
+                           levels = 1:6,labels = c("Theorical", "Naive", "weighted average", "Max weighted average", "P_weighted average", "EM"))
 boxplot_beta0[,2] = factor(boxplot_beta0[,2] )
 boxplot_beta0[,3] = factor(boxplot_beta0[,3] )
 boxplot_beta0[,4] = as.numeric(boxplot_beta0[,4] )
@@ -398,12 +401,11 @@ beta0_3_censor = ggplot(boxplot_beta0,aes(x=censor,y= beta0.3,fill=Estimator))+
 ##############    nA fixed and v_matrix varies ######
 
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/data_generation")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Methods")
 
 source("3_scenarios_Q_connu.R")
-#scenarios_boxplot=scenarios[scenarios$alpha==0.8,] 
-scenarios_boxplot =  scenarios[c(2,12, 13), ]
-#scenarios_boxplot=scenarios[scenarios$alpha==1,] 
+scenarios_boxplot = scenarios[(scenarios$alpha==0.9& scenarios$censor== 2.948469) &
+                           (scenarios$nA==1000 & scenarios$nB==2000),] 
 
 fixed= "nA"
 varies="v_matrix"
@@ -412,7 +414,7 @@ library(ggplot2)
 library(gridExtra)
 library(ggpubr)
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results")
+#setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results")
 boxplot_beta0 = NULL
 
 # size fix
@@ -484,7 +486,7 @@ colnames(boxplot_beta0) = c("Estimator",varies,"nB", "beta0.1","beta0.2","beta0.
 boxplot_beta0 = data.frame(boxplot_beta0)
 
 boxplot_beta0[,1] = factor(boxplot_beta0[,1],
-                           levels = 1:6,labels = c("Theorical", "Naive", "weighted average", "2-max weighted average", "Q_weighted average", "EM"))
+                           levels = 1:6,labels = c("Theorical", "Naive", "weighted average", "Max weighted average", "P_weighted average", "EM"))
 boxplot_beta0[,2] = factor(boxplot_beta0[,2] )
 boxplot_beta0[,3] = factor(boxplot_beta0[,3] )
 boxplot_beta0[,4] = as.numeric(boxplot_beta0[,4] )
@@ -496,7 +498,7 @@ boxplot_beta0[,6] = as.numeric(boxplot_beta0[,6] )
 
 beta0_1_R = ggplot(boxplot_beta0,aes(x=v_matrix,y= beta0.1,fill=Estimator))+
   geom_boxplot()+
-  xlab(quote(R))+
+  xlab(quote(n[B]^"*"))+
   ylab(quote(hat(beta)[1]))+
   geom_hline(yintercept=beta[1],lty=1,col="orange")
 #+  ggtitle(titlename)
@@ -506,7 +508,7 @@ beta0_1_R = ggplot(boxplot_beta0,aes(x=v_matrix,y= beta0.1,fill=Estimator))+
 beta0_2_R = ggplot(boxplot_beta0,aes(x=v_matrix,y= beta0.2,fill=Estimator))+
   geom_boxplot()+
   theme(legend.position = "none")+
-  xlab(quote(R))+
+  xlab(quote(n[B]^"*"))+
   ylab(quote(hat(beta)[2]))+
   geom_hline(yintercept=beta[2],lty=1,col="orange")
 #beta0_2_R
@@ -515,14 +517,14 @@ beta0_2_R = ggplot(boxplot_beta0,aes(x=v_matrix,y= beta0.2,fill=Estimator))+
 beta0_3_R = ggplot(boxplot_beta0,aes(x=v_matrix,y= beta0.3,fill=Estimator))+
   geom_boxplot()+
   theme(legend.position = "none")+
-  xlab(quote(R))+
+  xlab(quote(n[B]^"*"))+
   ylab(quote(hat(beta)[3]))+
   geom_hline(yintercept=beta[3],lty=1,col="orange")
 #beta0_3_R
 
 #figure <- ggarrange(beta0_1_R, beta0_2_R, beta0_3_R,
- #                   common.legend = TRUE,
-  #                 ncol = 2, nrow = 2)
+#                    common.legend = TRUE,
+#                   ncol = 2, nrow = 2)
 #figure
 
 figure <- ggarrange(beta0_1_alpha, beta0_2_alpha, beta0_3_alpha,
