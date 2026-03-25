@@ -1,11 +1,12 @@
 
 
 ############### SCENARIOS
-nA_sample = c(100,500,1000) # make sure we have nA >= 100
+nA_sample = c(100,500,2000) # make sure we have nA >= 100
 nB_sample = 2*nA_sample
-p = 3
-nsim =500
-beta = c(0.5,-0.5,1)
+p = 8
+nsim =10
+#beta = c(0.5,-0.5,1)
+beta = c(0.5,-0.5,1,2,-1,3,0.8,-0.8)
 R=c(4,6)
 #(1.610541 3.039472 6.341335) for nA=100 (no difference with nA=1000) 
 
@@ -17,10 +18,10 @@ K_min= 22
 
 #K_sample=  t(matrix(rep(c(9,18,27), p), ncol=3))# MULTIPLE OF 3, vary K
 
-K_sample = cbind((K_min-10),(K_min-6),(K_min) )# make sure we have (K_min-5) >= 2 
+K_sample = cbind((K_min-12),(K_min-6),(K_min) )# make sure we have (K_min-5) >= 2 
 
-#prevalence_sample = c(0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8)
-
+#prevalence = c(0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8)
+# probability for matching variable
  prevalence_sample = 0.5
 
 ############## Table of scenarios
