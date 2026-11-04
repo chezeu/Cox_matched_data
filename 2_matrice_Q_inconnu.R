@@ -1,6 +1,6 @@
 
 ###############  matrix Q
-
+#comparison approach
 compare_binary <- function(datA, datB, K){
   compare1 <- function(k, datA, datB, K){
     XA.k = datA[,k]
@@ -25,7 +25,7 @@ compare_binary <- function(datA, datB, K){
   return(comp_mat)
 }
 
-###############
+############### matrix with empirical approach
 Matrix_Q = function(comp_mat,K,datA,datB){
   
   nA= nrow(datA)
@@ -36,17 +36,16 @@ Matrix_Q = function(comp_mat,K,datA,datB){
   vect_gamma= comp_mat$vect_gamma # comparison pairs
   
   matrix_id <- t( matrix(vect_gamma,ncol=nA,nrow=nB))
- # identification = apply(matrix_id,1, FUN= function(x){which(x==1)}) # common variables
-  number = apply(matrix_id,1, FUN= function(x){length(which(x==1))}) # number of individual
+  
+   number = apply(matrix_id,1, FUN= function(x){length(which(x==1))}) # number of individual with common variables
   
   Q= matrix_id/number
   
-  naive_id = apply(Q,1, which.max)
+  naive_id = apply(Q,1, which.max) ## naive identification
   
   dif=which(naive_id!=idBA)
   
-  return(list(Q=Q, naive_id=naive_id,dif=dif,number=number))
+  return(list(Q=Q, naive_id=naive_id ))
   
 }
-
-
+ 

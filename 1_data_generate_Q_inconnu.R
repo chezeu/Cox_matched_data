@@ -2,7 +2,7 @@
 
 ########################################################
 # data generation of the bigger data base
-
+# prevalence== proba for matching variables
 Generate_data <- function(K,nA,nB,prevalence,censor, min_prev = 0.01){
   
   # First database B with matching variables
@@ -11,7 +11,7 @@ Generate_data <- function(K,nA,nB,prevalence,censor, min_prev = 0.01){
   
   conditionB = TRUE
   while (conditionB){
-    datB[,1:K] = sapply(prevalence, function(x){rbinom(nB, size = 1,prob = x)})
+     datB[,1:K] = sapply(prevalence, function(x){rbinom(nB, size = 1,prob = x)})
     conditionB = (sum(colSums(datB[,1:K]/nB) >= min_prev) < K)
   }
   
@@ -25,11 +25,10 @@ Generate_data <- function(K,nA,nB,prevalence,censor, min_prev = 0.01){
     datA <- datB[idBA,]
 
   ##covarites data
-  p=3
   X1 = rnorm(nB,0,1)
   X2 = rbinom(nB,size = 1, prob = 0.7)
   X3 = rnorm(nB,0,2)
-  X  = as.matrix(cbind(X1, X2, X3))[idBA,]
+   X  = as.matrix(cbind( X1, X2, X3 ))[idBA,]
   
   U  = runif(nA,0,1) # Time to event variable
   Tt = -log(U)/exp((X%*%beta))#lambda=1
@@ -43,13 +42,13 @@ Generate_data <- function(K,nA,nB,prevalence,censor, min_prev = 0.01){
   surv_data = data.frame(Time,delta,X)
   
   colnames(surv_data) = c('Time','delta',paste("X", 1:p, sep = ""))
-  XB = as.matrix(cbind(X1, X2,X3))
+  XB = as.matrix(cbind( X1, X2, X3 ))
   
   databaseB <- matrix(0,nB,(p+K+1))
-  databaseB[,1:3] <- as.matrix(XB)
-  databaseB [,4: ncol(databaseB) ]<-as.matrix( datB)
+  databaseB[,1:p] <- as.matrix(XB)
+  databaseB [,(p+1): ncol(databaseB) ]<-as.matrix( datB)
   databaseB <- data.frame(databaseB)
-  colnames(databaseB)=c("x1","x2","X3",paste("R", 1:K, sep = ""),"id") 
+  colnames(databaseB)=c(paste("X", 1:p, sep = ""),paste("R", 1:K, sep = ""),"id") 
   
   databaseA <- matrix(0,nA,(2+K+1))
   databaseA[,1:2] <- as.matrix(surv_data[,1:2])

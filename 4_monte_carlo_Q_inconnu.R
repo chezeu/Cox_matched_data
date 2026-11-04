@@ -2,21 +2,21 @@
 library(survival)
 library(rootSolve)
 library(nleqslv)
-
+library(reclin2)
 library(Matrix)
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Methods")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/Methods")
 
-source("2_risk_function.R")
-source("3_naive_method.R")
-source("4_method_w_sum1.R")
-source("5_method_w_sum2.R")
-source("6_2_method_EM.R")
-source("7_method_q_sum.R")
-
-#setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/data_generation")
 source("1_data_generate_Q_inconnu.R")
 source("2_matrice_Q_inconnu.R")
 source("3_scenarios_Q_inconnu.R")
+ 
+source("4_0_naive_method.R")
+source("4_1_weighted_average.R")
+source("4_2_max_weighted_average.R")
+source("4_3_weighted_PS.R")
+source("4_4_Full_likelihood.R")
+
+
 
 ################### nsim monte carlos
 estimates_survival<- function(nsim,nA,nB,p,beta,K,prevalence,censor){
@@ -42,10 +42,11 @@ estimates_survival<- function(nsim,nA,nB,p,beta,K,prevalence,censor){
     
     #data generation
     mf = Generate_data(K,nA,nB,prevalence,censor,min_prev = 0.01)
+    
     surv_data = mf$surv_data
     XB = mf$XB
     data_true=surv_data
-    idBA=mf$idBA
+    idBA=mf$idBA # individual in A
     
     databaseA=mf$databaseA
     databaseB =mf$ databaseB
@@ -54,43 +55,25 @@ estimates_survival<- function(nsim,nA,nB,p,beta,K,prevalence,censor){
     datB= mf$datB
     #####
     #record linkage 
-    #comp_mat = compare_binary (datA, datB, K)
-    #linked = Matrix_Q(comp_mat,K,datA, datB)
-    #Q=linked$Q
-   # summary (as.vector(Q))
-   # apply(Q,1,sum)
-   # number=linked$number
-    
-    # fellegy and sunter 
-    matrix_p= FS_function (datA,datB,K)
-     matrix_id=matrix_p$prob_match
-     summary (as.vector(matrix_id))
-     
-     naive_id = matrix_p$naive_id
-     Q= matrix_id/ rowSums(matrix_id)
-     summary (as.vector(Q))
-
-         
-   # naive_id = linked$naive_id
-    #dif=linked$dif
-    #####naive 
-    
+    comp_mat = compare_binary (datA, datB, K)
+    linked = Matrix_Q(comp_mat,K,datA, datB)
+    Q=linked$Q
+    summary (as.vector(Q))
+    apply(Q,1,sum)
+    naive_id= linked$naive_id
+   
     Ts = data_true$Time
     event = data_true$delta
     
     
     naive_data = generate_naive_data(naive_id,XB,Ts,event)
    
-    Z = as.matrix(naive_data[,-c(1,2)])
+    Z = as.matrix(naive_data[,-c(1,2)]) # naive covariable
     
-    lambda0 =  rep(0.1,length(event))
+    lambda0 =  rep(0.1,length(event)) # initialized lambda0
     lambda0 [which(event == 0)] = 0
     beta0 = rep(0.1,p)
-    
-    # times of event
-    # death_times= Ts[which(event==1)]
-    
-    
+   
     # Theoretical estimating equation for true and naive data
     fit_true = coxph(Surv(Time,delta)~.,data = data_true)
     coef_true_s[i,] = as.vector(fit_true$coefficients)
@@ -105,22 +88,21 @@ estimates_survival<- function(nsim,nA,nB,p,beta,K,prevalence,censor){
     coef_w_sum1_s[i,] = fit_w_sum1$coef
     converge_w_sum1[i] = fit_w_sum1$converge
     
-    #method with the maximum of proba
+    #method with  maximum weighted average
     fit_w_sum2 = coxph_w_sum2(Ts,event,XB, Q, maxiter = 20)
     coef_w_sum2_s[i,] = fit_w_sum2$coef
     converge_w_sum2[i] = fit_w_sum2$converge
     
-    # method with Q average
+    # method with weighted PS
     fit_Q_sum = coxph_Q_sum(Ts,event,XB, Q,maxiter = 20)
     coef_Q_sum_s[i,] = fit_Q_sum$coef
     converge_Q_sum[i] = fit_Q_sum$converge
     
-    # EM method
+    # Full likelihood method
     fit_estimate = Func_itteration(beta0,lambda0,Ts,event,XB,Q,tol= 1e-6,maxits = 300)
     coef_estimate_s[i,] = fit_estimate$beta0
     it_EM = fit_estimate$it
-    
-    
+     
   }
   
   return(list( coef_true_s1 = coef_true_s[,1], coef_true_s2 = coef_true_s[,2],coef_true_s3 = coef_true_s[,3],
@@ -135,9 +117,9 @@ estimates_survival<- function(nsim,nA,nB,p,beta,K,prevalence,censor){
 
 
 
-setwd("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results/Results_Q_inconnu")
+setwd("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/Results/Results_Q_inconnu")
 
-for (i in c(1,4,7)){
+for (i in c(7,8,9)){
   nsim=scenarios[i,1]
   K=scenarios[i,2]
   nA=scenarios[i,3]
@@ -147,7 +129,7 @@ for (i in c(1,4,7)){
   
   results_sample = estimates_survival(nsim,nA,nB,p,beta,K,prevalence,censor) #monte carlos
   
-  filename = paste0("C:/Users/fchezeut/Documents/GitHub/Cox-matched-data/Results/Results_Q_inconnu/","nsim=",nsim,
+  filename = paste0("C:/Users/fchezeut/Documents/GitHub/Cox_matched_data/Results/Results_Q_inconnu/","nsim=",nsim,
                     "_nA=",nA,"_nB=",nB, "_K=",K,"censor=",censor,".Rdata")
   
   save(results_sample,file = filename)

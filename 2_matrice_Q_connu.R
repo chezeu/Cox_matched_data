@@ -4,12 +4,11 @@ genere_matrix = function(nA,nB,alpha){
 
 Q1 = matrix(0, nA, nB)
 
-t1= round((alpha*nA)) #individuals with (1,0,0,0)
-t2= nA - t1 #individuals with different possible matche
-v1= c(0.6,0.2,0.2) # 3 possible matches
-v2= c(0.3,0.2,0.2,rep(0.1,3)) # 6 possible matches
-#v3= c(0.2,rep(0.1,8) ) # 9 possible matches
-v3= rep(1/9, 9) # 9 possible matches
+t1= round((alpha*nA)) #number of individuals with proba (1,0,0,0)
+t2= nA - t1 #rest of individuals with different possible matche
+v1= c(0.6,0.2,0.2) # 3 possible matchs
+v2= c(0.3,0.2,0.2,rep(0.1,3)) # 6 possible matchs
+v3= rep(1/9, 9) # 9 possible matchs
 nbre= c(3,6,9)
 
 if(v_matrix==nbre[1]){ 

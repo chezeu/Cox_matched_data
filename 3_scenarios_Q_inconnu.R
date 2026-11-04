@@ -1,26 +1,23 @@
 
 
 ############### SCENARIOS
-nA_sample = c(100,500,2000) # make sure we have nA >= 100
+nA_sample = c(100,500,1000) # make sure we have nA >= 100
 nB_sample = 2*nA_sample
-p = 8
-nsim =10
-#beta = c(0.5,-0.5,1)
-beta = c(0.5,-0.5,1,2,-1,3,0.8,-0.8)
+p = 3
+nsim =500
+beta = c(0.5,-0.5,1 )
 R=c(4,6)
-#(1.610541 3.039472 6.341335) for nA=100 (no difference with nA=1000) 
+
+#(1.610541 3.039472 6.341335) for nA=100
 
 censor_sample=c(1.553309,2.948469,6.392605)# for 40%,30%,20%
 
+# min value of K for which we have a unique identification
 
-K_min= 22
-#K_min= round(log(nB_sample)/log(2)) # min value of K for which we have a unique identification
+K_min= 21 # for nA=1000
 
-#K_sample=  t(matrix(rep(c(9,18,27), p), ncol=3))# MULTIPLE OF 3, vary K
+K_sample = cbind((K_min-9),(K_min-5),(K_min) )# make sure we have (K_min-9) >= 2 
 
-K_sample = cbind((K_min-12),(K_min-6),(K_min) )# make sure we have (K_min-5) >= 2 
-
-#prevalence = c(0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8)
 # probability for matching variable
  prevalence_sample = 0.5
 
@@ -49,4 +46,4 @@ colnames(scenarios) = c("nsim","K","nA","nB","censor")
 
 scenarios=data.frame(scenarios)
 
-##################### matrix
+
